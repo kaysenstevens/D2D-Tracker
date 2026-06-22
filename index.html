@@ -2456,9 +2456,58 @@ function fmtTime(t) {
   return `${h % 12 || 12}${m ? ':' + String(m).padStart(2,'0') : ''} ${ampm}`;
 }
 
+// --- Field prefs ---
+const FIELD_DEFS = [
+  { key: 'phone',       label: 'Phone number',       icon: 'ti-phone' },
+  { key: 'address',     label: 'Address',             icon: 'ti-map-pin' },
+  { key: 'bestTime',    label: 'Best time to catch',  icon: 'ti-clock' },
+  { key: 'lastContact', label: 'Last contacted',      icon: 'ti-check' },
+  { key: 'notes',       label: 'Notes preview',       icon: 'ti-notes' },
+  { key: 'gift',        label: 'Gift reminder',       icon: 'ti-gift' },
+];
+const FIELD_DEFAULTS = { phone: true, address: false, bestTime: true, lastContact: true, notes: false, gift: true };
+
+function getFieldPrefs() {
+  try { return Object.assign({}, FIELD_DEFAULTS, JSON.parse(localStorage.getItem('d2d_field_prefs') || '{}')); } catch(e) { return {...FIELD_DEFAULTS}; }
+}
+function saveFieldPrefs(prefs) { localStorage.setItem('d2d_field_prefs', JSON.stringify(prefs)); }
+
+function openFieldPrefs() {
+  const prefs = getFieldPrefs();
+  document.getElementById('field-prefs-list').innerHTML = FIELD_DEFS.map(f => `
+    <div class="field-toggle-row">
+      <label class="field-toggle-label" for="fp-${f.key}"><i class="ti ${f.icon}" style="color:var(--text3);font-size:16px"></i>${f.label}</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="fp-${f.key}" ${prefs[f.key] ? 'checked' : ''} onchange="onFieldPrefChange('${f.key}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`).join('');
+  document.getElementById('field-prefs-sheet').classList.add('open');
+  document.getElementById('field-prefs-backdrop').classList.add('open');
+}
+function closeFieldPrefs() {
+  document.getElementById('field-prefs-sheet').classList.remove('open');
+  document.getElementById('field-prefs-backdrop').classList.remove('open');
+}
+function onFieldPrefChange(key, val) {
+  const prefs = getFieldPrefs();
+  prefs[key] = val;
+  saveFieldPrefs(prefs);
+  renderLeads();
+}
+
+// Collapsed city groups (persisted in memory only)
+const collapsedCities = new Set();
+function toggleCityGroup(city) {
+  if (collapsedCities.has(city)) collapsedCities.delete(city);
+  else collapsedCities.add(city);
+  renderLeads();
+}
+
 function renderLeads() {
   const allLeads = getLeads();
   const el = document.getElementById('fu-leads-section');
+  const prefs = getFieldPrefs();
 
   const leads = applyLeadFilters(allLeads.map((l,i) => ({...l, _idx: i})));
 
@@ -2490,49 +2539,57 @@ function renderLeads() {
   const totalAll = allLeads.length;
   const countLabel = totalShown < totalAll ? `${totalShown} of ${totalAll}` : `${totalAll}`;
 
-  el.innerHTML = `<div class="section-head"><h2><i class="ti ti-users"></i> Leads by city</h2><span style="font-size:12px;color:var(--text3)">${countLabel} leads</span></div>` +
+  el.innerHTML = `<div class="section-head"><h2><i class="ti ti-users"></i> Leads</h2><span style="font-size:12px;color:var(--text3)">${countLabel} leads</span></div>` +
     Object.entries(cities).map(([city, cityLeads]) => {
+      const collapsed = collapsedCities.has(city);
       const cards = cityLeads.map(l => {
         const d = l.followUpDate ? daysUntil(l.followUpDate) : null;
         let fuTag = '', cardCls = '';
         if (d !== null) {
           if (d < 0)        { fuTag = `<span class="followup-tag overdue">Overdue ${Math.abs(d)}d</span>`; cardCls = 'overdue'; }
-          else if (d === 0) { fuTag = `<span class="followup-tag today">Follow up today</span>`; cardCls = 'upcoming'; }
-          else if (d <= 7)  { fuTag = `<span class="followup-tag soon">In ${d} day${d!==1?'s':''}</span>`; cardCls = 'upcoming'; }
+          else if (d === 0) { fuTag = `<span class="followup-tag today">Today</span>`; cardCls = 'upcoming'; }
+          else if (d <= 7)  { fuTag = `<span class="followup-tag soon">In ${d}d</span>`; cardCls = 'upcoming'; }
           else              { fuTag = `<span class="followup-tag later">${formatDate(l.followUpDate)}</span>`; }
         }
         if (l.needsGift) cardCls = 'needs-gift';
         const bestTime = formatBestTime(l);
-
         const lastContact = lastContactedLabel(l);
+
+        const metaParts = [];
+        if (prefs.phone && l.phone) metaParts.push(`<i class="ti ti-phone" style="font-size:10px;vertical-align:-1px"></i> ${l.phone}`);
+        if (prefs.address && l.address) metaParts.push(l.address);
+
+        const pills = [];
+        if (prefs.bestTime && bestTime) pills.push(`<span class="best-time-pill">⏰ ${bestTime}</span>`);
+        if (prefs.lastContact && lastContact) pills.push(`<span class="last-contact-pill">✓ ${lastContact}</span>`);
+
         return `<div class="lead-card ${cardCls}" onclick="openLeadModal(${l._idx})">
-          <div>
-            <div class="lead-name">${l.name || 'Unnamed'}</div>
-            <div class="lead-meta">
-              ${l.phone ? `<span><i class="ti ti-phone" style="font-size:11px;vertical-align:-1px"></i> ${l.phone}</span>` : ''}
-              ${l.address ? `<span>${l.address}</span>` : ''}
-            </div>
-            ${bestTime ? `<span class="best-time-pill">⏰ ${bestTime}</span>` : ''}
-            ${lastContact ? `<span class="last-contact-pill">✓ ${lastContact}</span>` : ''}
-            ${l.notes ? `<div class="lead-notes">${l.notes.substring(0,120)}${l.notes.length>120?'…':''}</div>` : ''}
-            <div style="margin-top:8px" onclick="event.stopPropagation()">
-              <button class="fu-btn" onclick="logContact(${l._idx})"><i class="ti ti-phone-check"></i> Followed up</button>
+          <div class="lead-card-top">
+            <span class="lead-name">${l.name || 'Unnamed'}</span>
+            <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+              ${l.interest ? `<span class="interest-pill">${l.interest}</span>` : ''}
+              ${fuTag}
+              ${prefs.gift && l.needsGift ? '<span style="font-size:13px">🎁</span>' : ''}
             </div>
           </div>
-          <div class="lead-right">
-            ${l.interest ? `<span class="interest-pill">${l.interest}</span>` : ''}
-            ${fuTag}
-            ${l.needsGift ? '<span class="gift-badge">🎁 Gift</span>' : ''}
+          ${metaParts.length ? `<div class="lead-meta">${metaParts.join(' · ')}</div>` : ''}
+          ${pills.length ? `<div class="lead-card-pills">${pills.join('')}</div>` : ''}
+          ${prefs.notes && l.notes ? `<div class="lead-notes">${l.notes.substring(0,100)}${l.notes.length>100?'…':''}</div>` : ''}
+          <div style="margin-top:8px" onclick="event.stopPropagation()">
+            <button class="fu-btn" onclick="logContact(${l._idx})"><i class="ti ti-phone-check"></i> Followed up</button>
           </div>
         </div>`;
       }).join('');
 
       return `<div class="city-group">
-        <div class="city-header">
+        <div class="city-header" onclick="toggleCityGroup('${city.replace(/'/g,"\\'")}')">
           <span class="city-label">${city}</span>
           <span class="city-count">${cityLeads.length}</span>
+          <i class="ti ti-chevron-down city-chevron${collapsed?' collapsed':''}"></i>
         </div>
-        ${cards}
+        <div class="city-cards${collapsed?' hidden':''}">
+          ${cards}
+        </div>
       </div>`;
     }).join('');
 
