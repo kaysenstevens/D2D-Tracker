@@ -1982,18 +1982,84 @@ function renderPatterns(appts) {
   // Sort: lowest Yes% first (worst problems at top)
   const gridStats = stats.filter(s => s.answered > 0).slice().sort((a,b) => (a.yesRate ?? 1) - (b.yesRate ?? 1));
 
-  // Build insights from lowest-performing questions
+  // Per-question human insight messages — keyed by QA question key
+  const INSIGHT_MSGS = {
+    didPullback: {
+      red:    (p) => `You only pulled back ${p}% of the time — this is one of the biggest closers in D2D. If you're not creating distance, you're coming across as desperate. Try stepping away more and letting them chase the deal.`,
+      amber:  (p) => `You're pulling back about ${p}% of the time, which is decent but there's room to be more consistent. The pullback is what builds tension and trust — don't skip it when the energy feels good.`,
+    },
+    pb: {
+      red:    (p) => `Power bills only collected ${p}% of the time — without it, your closer is flying blind. No power bill almost always means a harder close or a missed deal. Make getting it feel natural and non-negotiable early in the conversation.`,
+      amber:  (p) => `You're grabbing the power bill ${p}% of the time. Getting it consistently sets your closer up to show real numbers, which builds urgency. Make it part of your standard flow every time.`,
+    },
+    bothPitched: {
+      red:    (p) => `Both spouses were only pitched ${p}% of the time. If one decision-maker isn't in the room, you're almost guaranteed a "we need to talk about it" objection. Always confirm upfront that the other person will be home.`,
+      amber:  (p) => `Both spouses were present ${p}% of the time. This is a high-impact metric — when one person's missing, deals stall. It's worth asking when you set the appointment whether everyone will be home.`,
+    },
+    transitioned: {
+      red:    (p) => `You only transitioned inside the house ${p}% of the time. Sitting at a table changes the whole energy — it's harder to say no when you're inside and comfortable. If you're closing at the door, you're making it too easy to brush you off.`,
+      amber:  (p) => `Transitioning inside happened ${p}% of the time. Getting them off the doorstep is a game-changer for close rates. Work on making the transition feel natural — "mind if we sit down so I can show you the numbers?" usually does it.`,
+    },
+    wasSimple: {
+      red:    (p) => `Only ${p}% of your appointments were considered simple — there's a good chance you're overcomplicating the pitch. Solar doesn't need to feel complex to the homeowner. Strip it down: lower bill, cleaner energy, locked-in rate.`,
+      amber:  (p) => `About ${p}% of your appointments felt simple. When things get complex, homeowners stall. Try trimming your pitch and see if objections go down — less is usually more.`,
+    },
+    within24h: {
+      red:    (p) => `Only ${p}% of your appointments were set within 24 hours of the door knock. Leads set further out have a much higher cancel rate — the excitement fades fast. Push hard for same-day or next-day slots whenever possible.`,
+      amber:  (p) => `${p}% of appointments were set within 24 hours, which is a solid start. The sooner after the door knock, the better — try anchoring to "how does tomorrow look for you?" before offering later dates.`,
+    },
+    qualifyingQs: {
+      red:    (p) => `Qualifying questions were only asked ${p}% of the time. Without qualifying, you're going into appointments blind — you don't know their bill, their ownership situation, or their pain points. This makes it nearly impossible to pitch to what actually matters to them.`,
+      amber:  (p) => `You asked qualifying questions ${p}% of the time. Knowing their pain before the appointment lets you tailor your pitch and hit the right emotional buttons. Try making it a habit every single sit.`,
+    },
+    goodRelationship: {
+      red:    (p) => `A good relationship was only built ${p}% of the time. People buy from people they like — if the vibe isn't there, the deal isn't happening regardless of how good the offer is. Slow down at the start and find common ground before pitching.`,
+      amber:  (p) => `You built a good relationship ${p}% of the time. This is the foundation everything else sits on. A couple minutes of genuine connection early can change the entire tone of the appointment.`,
+    },
+    goodVibes: {
+      red:    (p) => `You left with good vibes only ${p}% of the time. When the energy is off at the end, follow-ups are an uphill battle. Even on a no, try to leave them feeling good about you — referrals and future callbacks come from that.`,
+      amber:  (p) => `Good vibes on exit happened ${p}% of the time. Ending strong keeps the door open for follow-ups and referrals. Make sure you're not leaving on a sour note even when the answer is no.`,
+    },
+    wereEngaged: {
+      red:    (p) => `Homeowners were engaged only ${p}% of the time. Low engagement usually means the pitch isn't landing or the relationship wasn't built early enough. Check whether you're talking too much and not asking enough questions.`,
+      amber:  (p) => `Engagement was there ${p}% of the time. Getting them involved — asking questions, showing numbers, having them hold the tablet — keeps attention up and makes the decision feel like theirs.`,
+    },
+    exp45min: {
+      red:    (p) => `The 45-minute expectation was only set ${p}% of the time. When homeowners don't know how long it'll take, they get antsy and rush you out the door. Setting the expectation upfront buys you the time you need to close.`,
+      amber:  (p) => `You set the time expectation ${p}% of the time. This one's a quick win — it takes five seconds and prevents the "we're really busy" bailout halfway through.`,
+    },
+    sitAtTable: {
+      red:    (p) => `You sat at the corner of the table only ${p}% of the time. Sitting across from someone puts you in a negotiating position — side-by-side at the corner is collaborative. It's a small thing that changes the whole dynamic.`,
+      amber:  (p) => `Corner of the table positioning happened ${p}% of the time. It's a subtle but effective move — being next to them rather than across from them makes it feel like you're on the same team.`,
+    },
+  };
+
+  // Priority weighting for key questions — show these in insights even if only amber
+  const HIGH_PRIORITY = new Set(['didPullback', 'pb', 'bothPitched', 'transitioned']);
+
+  // Build insights — high-priority questions always included if not green, others only if red/amber
   const insights = [];
-  gridStats.slice(0, 4).forEach(s => {
+  const sorted_insights = gridStats.slice().sort((a,b) => {
+    const aPri = HIGH_PRIORITY.has(a.key) ? 0 : 1;
+    const bPri = HIGH_PRIORITY.has(b.key) ? 0 : 1;
+    if (aPri !== bPri) return aPri - bPri;
+    return (a.yesRate ?? 1) - (b.yesRate ?? 1);
+  });
+
+  sorted_insights.forEach(s => {
     if (s.yesRate === null) return;
     const pct = Math.round(s.yesRate * 100);
-    // Use non-sit rate if available for sharper insight
-    const refPct = s.nsYesRate !== null ? Math.round(s.nsYesRate * 100) : pct;
-    if (refPct < 40) {
-      insights.push({ icon: 'ti-alert-triangle', color: 'var(--red)', text: `<b style="color:var(--text)">"${s.label}"</b> — only ${pct}% Yes. This is a consistent weak spot that's likely hurting your results.` });
-    } else if (refPct < 65) {
-      insights.push({ icon: 'ti-alert-circle', color: 'var(--amber)', text: `<b style="color:var(--text)">"${s.label}"</b> — ${pct}% Yes. Room to improve here.` });
+    const msgs = INSIGHT_MSGS[s.key];
+    const isHighPri = HIGH_PRIORITY.has(s.key);
+    if (pct < 40) {
+      const text = msgs?.red?.(pct) || `Only ${pct}% of your appointments had a "yes" here — this is dragging your results down.`;
+      insights.push({ icon: 'ti-alert-triangle', color: 'var(--red)', text });
+    } else if (pct < 70 && (isHighPri || insights.length < 3)) {
+      const text = msgs?.amber?.(pct) || `You're at ${pct}% here — solid, but there's still room to tighten this up.`;
+      insights.push({ icon: 'ti-alert-circle', color: 'var(--amber)', text });
     }
+    // Cap at 5 insights total to avoid wall of text
+    if (insights.length >= 5) return;
   });
 
   // Common "what changed" notes
