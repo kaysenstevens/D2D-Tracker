@@ -677,6 +677,16 @@
   </main>
 </div>
 
+<!-- Field Prefs Sheet -->
+<div class="field-prefs-backdrop" id="field-prefs-backdrop" onclick="closeFieldPrefs()"></div>
+<div class="field-prefs-sheet" id="field-prefs-sheet">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:15px;font-weight:700">Customize card fields</div>
+    <button onclick="closeFieldPrefs()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0"><i class="ti ti-x"></i></button>
+  </div>
+  <div id="field-prefs-list"></div>
+</div>
+
 <!-- Import Modal -->
 <div class="modal-overlay" id="import-modal" style="display:none" onclick="if(event.target===this)closeImportModal()">
   <div class="modal" style="max-width:640px">
