@@ -1182,9 +1182,14 @@ function renderDashboard() {
   const dk2set = totals.sets > 0 ? Math.round(totals.dk / totals.sets) : '—';
   const set2sit = totals.sets > 0 ? Math.round((totals.sits / totals.sets)*100) + '%' : '—';
   const sit2close = totals.sits > 0 ? Math.round((totals.closes / totals.sits)*100) + '%' : '—';
-  const dkqp = totals.qp > 0 ? (totals.dk / totals.qp).toFixed(1) : '—';
+  const dk2qp = totals.qp > 0 ? Math.round(totals.dk / totals.qp) : '—';
+  const dk2close = totals.closes > 0 ? Math.round(totals.dk / totals.closes) : '—';
+  const dk2closeRate = totals.dk > 0 ? (totals.closes / totals.dk * 100).toFixed(1) + '%' : '—';
+  const dk2qpRate = totals.dk > 0 ? (totals.qp / totals.dk * 100).toFixed(1) + '%' : '—';
 
   document.getElementById('dash-ratios').innerHTML = `
+    <div class="ratio-card"><span class="rl">DK → Pitch</span><span class="rv">${dk2qp === '—' ? '—' : `1 : ${dk2qp}`}</span><span class="rl" style="font-size:10px;color:var(--text3)">${dk2qpRate} of doors</span></div>
+    <div class="ratio-card"><span class="rl">DK → Close</span><span class="rv">${dk2close === '—' ? '—' : `1 : ${dk2close}`}</span><span class="rl" style="font-size:10px;color:var(--text3)">${dk2closeRate} of doors</span></div>
     <div class="ratio-card"><span class="rl">DK per Set</span><span class="rv">${dk2set}</span></div>
     <div class="ratio-card"><span class="rl">Set → Sit</span><span class="rv">${set2sit}</span></div>
     <div class="ratio-card"><span class="rl">Sit → Close</span><span class="rv">${sit2close}</span></div>
