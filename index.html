@@ -1746,13 +1746,22 @@ function ensureQA(appt) {
   return appt;
 }
 
-function togglePatternBreakdown(header) {
-  patternBreakdownOpen = !patternBreakdownOpen;
-  const grid = document.getElementById('pattern-breakdown-grid');
-  const icon = header.querySelector('i');
-  if (grid) grid.style.display = patternBreakdownOpen ? 'grid' : 'none';
-  if (icon) { icon.className = patternBreakdownOpen ? 'ti ti-chevron-up' : 'ti ti-chevron-down'; }
+function togglePatternSection(section, header) {
+  const map = {
+    breakdown: { stateKey: 'patternBreakdownOpen', id: 'pattern-breakdown-grid', display: 'grid' },
+    insights:  { stateKey: 'patternInsightsOpen',  id: 'pattern-insights-body',  display: 'block' },
+    cherry:    { stateKey: 'patternCherryOpen',     id: 'pattern-cherry-grid',    display: 'grid' },
+    notes:     { stateKey: 'patternNotesOpen',      id: 'pattern-notes-body',     display: 'block' },
+  };
+  const cfg = map[section];
+  if (!cfg) return;
+  window[cfg.stateKey] = !window[cfg.stateKey];
+  const el = document.getElementById(cfg.id);
+  const icon = header.querySelector('i.ti-chevron-up, i.ti-chevron-down');
+  if (el) el.style.display = window[cfg.stateKey] ? cfg.display : 'none';
+  if (icon) icon.className = window[cfg.stateKey] ? 'ti ti-chevron-up' : 'ti ti-chevron-down';
 }
+function togglePatternBreakdown(header) { togglePatternSection('breakdown', header); }
 
 function renderQuality() {
   const mo = getMonth(currentMonth);
@@ -1889,6 +1898,9 @@ function refreshPatterns() {
 }
 
 let patternBreakdownOpen = true;
+let patternInsightsOpen = true;
+let patternCherryOpen = true;
+let patternNotesOpen = true;
 
 function renderPatterns(appts) {
   const el = document.getElementById('quality-patterns');
@@ -1944,9 +1956,15 @@ function renderPatterns(appts) {
   let html = '';
 
   if (insights.length) {
-    html += `<div class="insight-box">
-      <h3><i class="ti ti-bulb" style="color:var(--amber)"></i> Pattern analysis — ${reviewed.length} appointment${reviewed.length!==1?'s':''} reviewed</h3>
-      ${insights.map(ins => `<div class="insight-item"><i class="ti ${ins.icon}" style="color:${ins.color}"></i><span>${ins.text}</span></div>`).join('')}
+    html += `<div class="pattern-collapse-header" onclick="togglePatternSection('insights',this)">
+      <span style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Pattern analysis</span>
+      <i class="ti ${patternInsightsOpen ? 'ti-chevron-up' : 'ti-chevron-down'}" style="font-size:14px;color:var(--text3)"></i>
+    </div>
+    <div id="pattern-insights-body" style="display:${patternInsightsOpen ? 'block' : 'none'}">
+      <div class="insight-box" style="margin-top:10px">
+        <h3><i class="ti ti-bulb" style="color:var(--amber)"></i> ${reviewed.length} appointment${reviewed.length!==1?'s':''} reviewed</h3>
+        ${insights.map(ins => `<div class="insight-item"><i class="ti ${ins.icon}" style="color:${ins.color}"></i><span>${ins.text}</span></div>`).join('')}
+      </div>
     </div>`;
   }
 
@@ -1971,11 +1989,14 @@ function renderPatterns(appts) {
     html += '</div>';
   }
 
-  // Cherry on top breakdown (always positive framing, no collapse)
+  // Cherry on top — collapsible
   const extraGridStats = extraStats.filter(s => s.answered > 0);
   if (extraGridStats.length) {
-    html += `<div style="font-size:12px;font-weight:600;color:var(--purple);margin:16px 0 10px;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:6px"><i class="ti ti-cherry" style="font-size:14px"></i> Cherry on top — extra credit</div>
-    <div class="pattern-grid">`;
+    html += `<div class="pattern-collapse-header" onclick="togglePatternSection('cherry',this)" style="margin-top:6px">
+      <span style="font-size:12px;font-weight:600;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:6px"><i class="ti ti-cherry" style="font-size:14px"></i> Cherry on top</span>
+      <i class="ti ${patternCherryOpen ? 'ti-chevron-up' : 'ti-chevron-down'}" style="font-size:14px;color:var(--text3)"></i>
+    </div>
+    <div class="pattern-grid" id="pattern-cherry-grid" style="display:${patternCherryOpen ? 'grid' : 'none'}">`;
     extraGridStats.forEach(s => {
       const yesRate = Math.round((s.yesRate ?? 0) * 100);
       html += `<div class="pattern-item" style="border-color:rgba(168,85,247,0.25);background:rgba(168,85,247,0.05)">
@@ -1987,9 +2008,13 @@ function renderPatterns(appts) {
     html += '</div>';
   }
 
+  // Reflection notes — collapsible
   if (notes.length) {
-    html += `<div class="panel" style="margin-bottom:20px">
-      <div class="panel-header"><div class="panel-title"><i class="ti ti-notes"></i> Reflection notes</div></div>
+    html += `<div class="pattern-collapse-header" onclick="togglePatternSection('notes',this)" style="margin-top:6px">
+      <span style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Reflection notes</span>
+      <i class="ti ${patternNotesOpen ? 'ti-chevron-up' : 'ti-chevron-down'}" style="font-size:14px;color:var(--text3)"></i>
+    </div>
+    <div id="pattern-notes-body" style="display:${patternNotesOpen ? 'block' : 'none'};margin-bottom:20px">
       ${notes.map(n => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
         <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${n.name}${n.disp?' · '+n.disp:''}</div>
         <div style="font-size:13px;color:var(--text2)">${n.note}</div>
