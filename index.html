@@ -1,0 +1,3052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D2D Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --bg2: #18181f;
+    --bg3: #21212b;
+    --surface: #1e1e28;
+    --surface2: #272733;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f5;
+    --text2: #9090a8;
+    --text3: #5a5a70;
+    --accent: #6c63ff;
+    --accent2: #8b85ff;
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.12);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245,158,11,0.12);
+    --blue: #3b82f6;
+    --blue-bg: rgba(59,130,246,0.12);
+    --purple: #a855f7;
+    --purple-bg: rgba(168,85,247,0.12);
+    --teal: #14b8a6;
+    --teal-bg: rgba(20,184,166,0.12);
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; }
+  .sidebar-logo { padding: 0 20px 24px; display: flex; align-items: center; gap: 10px; }
+  .sidebar-logo .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+  .sidebar-logo span { font-size: 15px; font-weight: 600; color: var(--text); }
+  .nav-section { padding: 0 12px 8px; }
+  .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase; padding: 0 8px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; color: var(--text2); font-size: 13px; transition: all 0.15s; margin-bottom: 2px; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: rgba(108,99,255,0.15); color: var(--accent2); }
+  .nav-item i { font-size: 16px; }
+  .sidebar-bottom { margin-top: auto; padding: 12px; }
+  .month-picker { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; width: 100%; }
+  .month-picker select { background: none; border: none; color: var(--text); font-size: 13px; width: 100%; cursor: pointer; outline: none; }
+  .month-picker select option { background: var(--bg2); }
+
+  /* Main */
+  .main { flex: 1; overflow-y: auto; background: var(--bg); }
+  .main-header { padding: 20px 28px 0; display: flex; align-items: center; justify-content: space-between; }
+  .main-header h1 { font-size: 20px; font-weight: 600; }
+  .main-header .subtitle { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+
+  .content { padding: 20px 28px 40px; }
+
+  /* Stat Cards */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .stat-card .label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat-card .sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .stat-card.blue .value { color: var(--blue); }
+  .stat-card.purple .value { color: var(--purple); }
+  .stat-card.green .value { color: var(--green); }
+  .stat-card.amber .value { color: var(--amber); }
+  .stat-card.teal .value { color: var(--teal); }
+  .stat-card.red .value { color: var(--red); }
+
+  .ratio-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+  .ratio-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .ratio-card .rl { font-size: 12px; color: var(--text2); }
+  .ratio-card .rv { font-size: 18px; font-weight: 700; color: var(--accent2); }
+
+  /* Two-col layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+  /* Panel */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .panel-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .panel-title i { font-size: 16px; color: var(--text3); }
+
+  /* Week table */
+  .week-section { margin-bottom: 20px; }
+  .week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .week-header h3 { font-size: 13px; font-weight: 600; color: var(--text); }
+  .week-header .area-badge { font-size: 11px; background: var(--blue-bg); color: var(--blue); border-radius: 20px; padding: 3px 10px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; padding: 8px 4px; }
+  th:first-child { text-align: left; }
+  td { padding: 0; text-align: center; border-bottom: 1px solid var(--border); }
+  td:first-child { text-align: left; font-size: 12px; color: var(--text2); padding: 4px 8px 4px 0; }
+  .tfoot-row td { font-size: 12px; font-weight: 600; color: var(--text); padding: 8px 4px; background: var(--bg3); border-bottom: none; }
+  .tfoot-row td:first-child { padding-left: 0; border-radius: 6px 0 0 6px; }
+  .tfoot-row td:last-child { border-radius: 0 6px 6px 0; }
+
+  input[type="number"].cell-input {
+    width: 48px; background: none; border: none; text-align: center; color: var(--text);
+    font-size: 13px; padding: 7px 2px; outline: none; border-radius: 6px; width: 100%;
+    -moz-appearance: textfield;
+  }
+  input[type="number"].cell-input::-webkit-outer-spin-button,
+  input[type="number"].cell-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  input[type="number"].cell-input:focus { background: var(--bg3); }
+
+  .col-dk { color: var(--blue); }
+  .col-qp { color: var(--purple); }
+  .col-set { color: var(--teal); }
+  .col-sit { color: var(--amber); }
+  .col-close { color: var(--green); }
+  .col-fail { color: var(--red); }
+
+  /* Disposition bar */
+  .disp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .disp-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg3); border-radius: 8px; }
+  .disp-item .dl { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+  .disp-item .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .disp-item .dv { font-size: 15px; font-weight: 600; }
+
+  /* Quality bar */
+  .qual-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .qual-label { font-size: 12px; color: var(--text2); width: 120px; flex-shrink: 0; }
+  .qual-bar-wrap { flex: 1; background: var(--bg3); border-radius: 100px; height: 8px; overflow: hidden; }
+  .qual-bar { height: 100%; border-radius: 100px; transition: width 0.4s ease; }
+  .qual-pct { font-size: 12px; font-weight: 600; width: 42px; text-align: right; }
+
+  /* Appointment log */
+  .appt-item { padding: 14px 16px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; }
+  .appt-item:last-child { border-bottom: none; }
+  .appt-name { font-size: 14px; font-weight: 500; }
+  .appt-meta { font-size: 11px; color: var(--text3); margin-top: 3px; display: flex; gap: 8px; }
+  .appt-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+  .badge { font-size: 10px; font-weight: 600; border-radius: 20px; padding: 3px 8px; }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-teal { background: var(--teal-bg); color: var(--teal); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); }
+  .badge-red { background: var(--red-bg); color: var(--red); }
+  .badge-purple { background: var(--purple-bg); color: var(--purple); }
+  .badge-gray { background: rgba(255,255,255,0.06); color: var(--text3); }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-lg); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-header h2 { font-size: 16px; font-weight: 600; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .close-btn { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px; padding: 4px; border-radius: 6px; }
+  .close-btn:hover { color: var(--text); background: var(--bg3); }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; display: block; }
+  .form-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 12px; font-size: 13px; outline: none; }
+  .form-input:focus { border-color: var(--accent); }
+  .form-select { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 12px; font-size: 13px; outline: none; cursor: pointer; appearance: none; }
+  .form-select:focus { border-color: var(--accent); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+  .check-item { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .check-item input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+  .check-item span { font-size: 13px; color: var(--text); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px 20px; color: var(--text3); }
+  .empty i { font-size: 32px; margin-bottom: 10px; display: block; }
+  .empty p { font-size: 13px; }
+
+  /* Chart wrapper */
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 18px; font-size: 13px; color: var(--text); z-index: 200; opacity: 0; transform: translateY(8px); transition: all 0.2s; pointer-events: none; display: flex; align-items: center; gap: 8px; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast i { color: var(--green); font-size: 16px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; background: var(--bg3); border-radius: 10px; padding: 3px; margin-bottom: 20px; }
+  .tab { flex: 1; padding: 7px; text-align: center; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text3); border: none; background: none; transition: all 0.15s; }
+  .tab.active { background: var(--surface2); color: var(--text); }
+
+  /* Page views */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .trend-up { color: var(--green); font-size: 11px; }
+  .trend-down { color: var(--red); font-size: 11px; }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  input[type="date"].form-input, select.form-select option { color-scheme: dark; }
+
+  /* ---- Mobile bottom nav ---- */
+  .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); border-top: 1px solid var(--border); z-index: 90; padding: 6px 0 max(8px, env(safe-area-inset-bottom)); }
+  .mobile-nav-inner { display: flex; justify-content: space-around; }
+  .mobile-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--text3); cursor: pointer; padding: 6px 10px; border-radius: 10px; min-width: 52px; transition: color 0.15s; -webkit-tap-highlight-color: transparent; }
+  .mobile-nav-btn i { font-size: 22px; }
+  .mobile-nav-btn span { font-size: 9px; font-weight: 500; letter-spacing: 0.03em; }
+  .mobile-nav-btn.active { color: var(--accent2); }
+
+  /* ---- Mobile month bar ---- */
+  .mobile-month-bar { display: none; padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  .mobile-month-bar select { background: none; border: none; color: var(--text2); font-size: 13px; outline: none; cursor: pointer; }
+
+  /* ---- Responsive breakpoints ---- */
+  @media (max-width: 768px) {
+    .app { flex-direction: column; height: 100dvh; }
+    .sidebar { display: none; }
+    .mobile-nav { display: block; }
+    .mobile-month-bar { display: block; }
+    .main { padding-bottom: 70px; }
+    .main-header { padding: 14px 16px 0; flex-wrap: wrap; gap: 10px; }
+    .main-header > div:first-child { flex: 1 1 100%; }
+    .main-header h1 { font-size: 18px; }
+    .main-header > div:last-child { width: 100%; display: flex; gap: 8px; }
+    .main-header > div:last-child .btn { flex: 1; justify-content: center; font-size: 12px; padding: 9px 10px; }
+    .main-header > button { width: 100%; justify-content: center; }
+    .content { padding: 14px 16px 24px; }
+    .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .stat-card { padding: 12px; }
+    .stat-card .value { font-size: 20px; }
+    .stat-card .label { font-size: 9px; }
+    .ratio-row { grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+    .ratio-card { padding: 10px 12px; flex-direction: column; align-items: flex-start; gap: 2px; }
+    .ratio-card .rv { font-size: 16px; }
+    .ratio-card .rl { font-size: 10px; }
+    .two-col { grid-template-columns: 1fr; gap: 12px; }
+    .three-col { grid-template-columns: 1fr; }
+    .panel { padding: 14px; }
+    .chart-wrap { height: 160px !important; }
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .modal { border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 92dvh; max-width: 100%; }
+    .modal-header { padding: 16px 18px 12px; }
+    .modal-body { padding: 14px 18px; }
+    .modal-footer { padding: 12px 18px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+    .form-row { grid-template-columns: 1fr; }
+    .form-input, .form-select { font-size: 16px; padding: 11px 12px; }
+    .notes-input { font-size: 16px; }
+    .btn { min-height: 44px; }
+    table { font-size: 12px; }
+    .cell-input { font-size: 14px !important; padding: 10px 2px !important; }
+    th { padding: 6px 3px; font-size: 10px; }
+    td:first-child { font-size: 11px; min-width: 70px; }
+    .week-header { flex-wrap: wrap; gap: 6px; }
+    .disp-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .qual-label { width: 90px; font-size: 11px; }
+    .qa-row { flex-wrap: nowrap; gap: 8px; }
+    .qa-label { font-size: 12px; flex: 1; min-width: 0; }
+    .yn-btn { padding: 6px 10px; font-size: 11px; min-height: 36px; }
+    .lead-card { padding: 12px; }
+    .lead-name { font-size: 13px; }
+    .event-card { padding: 10px 12px; }
+    .holiday-banner { padding: 8px 16px; }
+    .appt-item { padding: 12px 14px; }
+    .section-head h2 { font-size: 13px; }
+    .pattern-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  }
+
+  @media (max-width: 400px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .ratio-row { grid-template-columns: repeat(3,1fr); }
+    .pattern-grid { grid-template-columns: 1fr; }
+    .yn-btn { padding: 5px 7px; font-size: 10px; }
+  }
+
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .sidebar { width: 180px; }
+    .stat-grid { grid-template-columns: repeat(3, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .three-col { grid-template-columns: 1fr 1fr; }
+    .content { padding: 16px 20px 32px; }
+    .main-header { padding: 16px 20px 0; }
+  }
+
+  /* Follow Up */
+  .holiday-banner { padding: 10px 28px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+  .holiday-toggle { background: none; border: none; color: var(--text3); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; }
+  .holiday-toggle:hover { background: var(--bg3); color: var(--text2); }
+  .holiday-dropdown { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 8px 0; min-width: 260px; position: absolute; z-index: 50; margin-top: 4px; }
+  .holiday-row { padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .holiday-row:hover { background: var(--bg3); }
+  .holiday-name { color: var(--text); }
+  .holiday-days { color: var(--text3); font-size: 11px; }
+  .holiday-days.soon { color: var(--amber); font-weight: 600; }
+
+  .city-group { margin-bottom: 24px; }
+  .city-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .city-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .city-count { font-size: 11px; color: var(--text3); background: var(--bg3); border-radius: 20px; padding: 2px 8px; }
+
+  .lead-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto; gap: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .lead-card:hover { border-color: var(--border2); }
+  .lead-card.needs-gift { border-left: 3px solid var(--purple); }
+  .lead-card.overdue { border-left: 3px solid var(--red); }
+  .lead-card.upcoming { border-left: 3px solid var(--amber); }
+  .lead-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .lead-meta { font-size: 11px; color: var(--text3); display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+  .lead-notes { font-size: 12px; color: var(--text2); line-height: 1.5; margin-top: 4px; }
+  .lead-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  .followup-tag { font-size: 11px; font-weight: 600; border-radius: 6px; padding: 3px 8px; white-space: nowrap; }
+  .followup-tag.overdue { background: var(--red-bg); color: var(--red); }
+  .followup-tag.today { background: var(--amber-bg); color: var(--amber); }
+  .followup-tag.soon { background: var(--blue-bg); color: var(--blue); }
+  .followup-tag.later { background: var(--bg3); color: var(--text3); }
+
+  .interest-pill { font-size: 11px; font-weight: 600; }
+  .best-time-pill { font-size: 10px; color: var(--text3); background: var(--bg3); border-radius: 6px; padding: 2px 7px; margin-top: 4px; display: inline-block; }
+  .last-contact-pill { font-size: 10px; font-weight: 600; border-radius: 6px; padding: 2px 7px; background: rgba(34,197,94,0.12); color: #4ade80; display: inline-block; margin-top: 3px; }
+  .fu-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; }
+  .fu-btn:hover { background: rgba(34,197,94,0.15); border-color: #4ade80; color: #4ade80; }
+  .contact-log { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .contact-log-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .contact-log-entry { display: flex; gap: 8px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .contact-log-entry:last-child { border-bottom: none; }
+  .contact-log-date { font-size: 11px; font-weight: 600; color: var(--accent); white-space: nowrap; min-width: 70px; }
+  .contact-log-note { font-size: 12px; color: var(--text2); flex: 1; }
+  .contact-log-del { font-size: 12px; color: var(--text3); cursor: pointer; padding: 0 4px; flex-shrink: 0; }
+  .contact-log-del:hover { color: var(--red); }
+
+  /* Sync */
+  .sync-btn { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+  .sync-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .sync-btn.synced { border-color: rgba(34,197,94,0.4); color: #4ade80; background: rgba(34,197,94,0.08); }
+  .sync-btn.syncing { border-color: var(--accent); color: var(--accent); }
+  .sync-step { background: var(--bg3); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .sync-step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
+  .sync-step-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; margin-bottom: 6px; }
+  .sync-step-body { font-size: 12px; color: var(--text2); line-height: 1.6; padding-left: 30px; }
+  .sync-step-body code { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-family: monospace; font-size: 11px; color: var(--accent2); }
+  .sync-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); display: inline-block; margin-right: 6px; }
+  .sync-status-dot.green { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+  .sync-status-dot.yellow { background: #f59e0b; }
+  .sync-user-info { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+
+  /* Filter + view toggle bar */
+  .fu-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
+  .filter-btn { font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .view-toggle { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-left: auto; }
+  .view-btn { padding: 5px 12px; background: var(--bg3); color: var(--text2); border: none; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+  .view-btn.active { background: var(--accent); color: #fff; }
+
+  /* Calendar */
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-header h3 { font-size: 15px; font-weight: 600; }
+  .cal-nav { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer; color: var(--text2); font-size: 13px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-day-label { text-align: center; font-size: 10px; font-weight: 600; color: var(--text3); padding: 4px 0 6px; text-transform: uppercase; }
+  .cal-cell { min-height: 64px; background: var(--bg3); border-radius: 8px; padding: 5px; cursor: default; position: relative; border: 1px solid transparent; transition: border-color 0.15s; }
+  .cal-cell.has-leads { cursor: pointer; }
+  .cal-cell.has-leads:hover { border-color: var(--accent); }
+  .cal-cell.today { border-color: var(--accent); background: rgba(99,91,255,0.08); }
+  .cal-cell.other-month { opacity: 0.3; }
+  .cal-cell.past { opacity: 0.55; }
+  .cal-date { font-size: 11px; font-weight: 600; color: var(--text3); margin-bottom: 3px; }
+  .cal-cell.today .cal-date { color: var(--accent); }
+  .cal-dots { display: flex; flex-wrap: wrap; gap: 2px; }
+  .cal-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .cal-dot.hot  { background: #ef4444; }
+  .cal-dot.warm { background: #f59e0b; }
+  .cal-dot.cold { background: #60a5fa; }
+  .cal-dot.other { background: var(--accent); }
+  .cal-day-panel { margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .cal-day-panel-header { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--accent); }
+
+  /* Map */
+  #fu-map { height: 60vh; min-height: 300px; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); }
+  .leaflet-popup-content-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  .leaflet-popup-content { color: var(--text); margin: 10px 14px; }
+  .leaflet-popup-tip { background: var(--surface); }
+  .map-popup-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .map-popup-meta { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+  .map-popup-btn { font-size: 11px; font-weight: 600; color: var(--accent); cursor: pointer; background: none; border: none; padding: 0; }
+
+  /* Days checkboxes in modal */
+  .day-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .day-chip input { display: none; }
+  .day-chip label { display: inline-block; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; user-select: none; }
+  .day-chip input:checked + label { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .event-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; cursor: pointer; }
+  .event-card:hover { border-color: var(--border2); }
+  .event-icon { font-size: 20px; flex-shrink: 0; }
+  .event-info { flex: 1; }
+  .event-name { font-size: 13px; font-weight: 500; }
+  .event-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .event-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .gift-badge { font-size: 10px; background: var(--purple-bg); color: var(--purple); border-radius: 20px; padding: 2px 8px; font-weight: 600; }
+  .days-badge { font-size: 11px; font-weight: 600; }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-head h2 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .section-head h2 i { font-size: 16px; color: var(--text3); }
+
+  /* Quality Review */
+  .qa-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 12px; overflow: hidden; }
+  .qa-card-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; user-select: none; }
+  .qa-card-header:hover { background: var(--surface2); }
+  .qa-card-body { padding: 0 18px 18px; border-top: 1px solid var(--border); display: none; }
+  .qa-card-body.open { display: block; }
+  .qa-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin: 16px 0 10px; }
+  .qa-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .qa-row:last-child { border-bottom: none; }
+  .qa-label { font-size: 13px; color: var(--text); }
+  .qa-controls { display: flex; gap: 6px; align-items: center; }
+  .yn-btn { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); background: none; color: var(--text2); transition: all 0.12s; }
+  .yn-btn.yes.active { background: var(--green-bg); color: var(--green); border-color: rgba(34,197,94,0.3); }
+  .yn-btn.kinda.active { background: var(--amber-bg); color: var(--amber); border-color: rgba(245,158,11,0.3); }
+  .yn-btn.no.active { background: var(--red-bg); color: var(--red); border-color: rgba(239,68,68,0.3); }
+  .yn-btn:hover { border-color: var(--border2); color: var(--text); }
+  .num-input { width: 52px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 4px 8px; font-size: 13px; text-align: center; outline: none; -moz-appearance: textfield; }
+  .num-input::-webkit-outer-spin-button, .num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .notes-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: 12px; resize: vertical; min-height: 60px; outline: none; margin-top: 8px; font-family: inherit; }
+  .notes-input:focus { border-color: var(--accent); }
+
+  .pattern-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 10px; margin-bottom: 20px; }
+  .pattern-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .pattern-item.warning { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.06); }
+  .pattern-item.danger { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.06); }
+  .pattern-item.ok { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.05); }
+  .pattern-q { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .pattern-bar-wrap { background: var(--bg3); border-radius: 100px; height: 6px; margin-bottom: 5px; }
+  .pattern-bar { height: 6px; border-radius: 100px; }
+  .pattern-pct { font-size: 11px; font-weight: 600; }
+  .pattern-collapse-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 6px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px; user-select: none; }
+  .pattern-collapse-header:hover { opacity: 0.8; }
+  .insight-box { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 20px; }
+  .insight-box h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .insight-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .insight-item i { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="ti ti-door"></i></div>
+      <span>D2D Tracker</span>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <button class="nav-item active" onclick="showPage('dashboard',this)">
+        <i class="ti ti-layout-dashboard"></i> Dashboard
+      </button>
+      <button class="nav-item" onclick="showPage('weeks',this)">
+        <i class="ti ti-calendar-week"></i> Weekly Data
+      </button>
+      <button class="nav-item" onclick="showPage('appointments',this)">
+        <i class="ti ti-calendar-check"></i> Appointments
+      </button>
+      <button class="nav-item" onclick="showPage('quality',this)">
+        <i class="ti ti-clipboard-check"></i> Quality Review
+      </button>
+      <button class="nav-item" onclick="showPage('followup',this)">
+        <i class="ti ti-users"></i> Follow Ups
+      </button>
+    </div>
+    <div class="sidebar-bottom">
+      <button class="sync-btn" id="sidebar-sync-btn" onclick="openSyncModal()">
+        <i class="ti ti-cloud" id="sync-icon"></i>
+        <span id="sync-label">Enable sync</span>
+      </button>
+      <div class="month-picker" style="margin-top:8px">
+        <select id="monthSelect" onchange="changeMonth()"></select>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard" class="page active">
+      <div class="main-header">
+        <div>
+          <h1 id="dash-title">Month to Date</h1>
+          <div class="subtitle" id="dash-subtitle">Loading...</div>
+        </div>
+      </div>
+      <div class="content">
+        <!-- Key Stats -->
+        <div class="stat-grid" id="dash-stats"></div>
+
+        <!-- Ratios -->
+        <div class="ratio-row" id="dash-ratios"></div>
+
+        <!-- Charts row -->
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="ti ti-chart-bar"></i> Daily doors knocked</div>
+            </div>
+            <div class="chart-wrap" style="height:180px">
+              <canvas id="dkChart" role="img" aria-label="Daily doors knocked by day of week">No data yet.</canvas>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="ti ti-chart-line"></i> Funnel</div>
+            </div>
+            <div class="chart-wrap" style="height:180px">
+              <canvas id="funnelChart" role="img" aria-label="Sales funnel from doors to closes">No data yet.</canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quality + Dispositions -->
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="ti ti-star"></i> Appointment quality</div>
+            </div>
+            <div id="qual-display"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="ti ti-tag"></i> Dispositions</div>
+            </div>
+            <div class="disp-grid" id="disp-display"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEEKLY DATA PAGE -->
+    <div id="page-weeks" class="page">
+      <div class="main-header">
+        <div>
+          <h1>Weekly Data</h1>
+          <div class="subtitle">Enter daily doors, pitches, sets, sits, closes, and fails</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="openImportModal()">
+            <i class="ti ti-upload"></i> Import RepCard CSV
+          </button>
+          <button class="btn btn-primary" onclick="openWeekModal()">
+            <i class="ti ti-plus"></i> Add week
+          </button>
+        </div>
+      </div>
+      <div class="content" id="weeks-content"></div>
+    </div>
+
+    <!-- APPOINTMENTS PAGE -->
+    <div id="page-appointments" class="page">
+      <div class="main-header">
+        <div>
+          <h1>Appointments</h1>
+          <div class="subtitle">Track quality and dispositions for each appointment</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="openApptImportModal()">
+            <i class="ti ti-upload"></i> Import RepCard CSV
+          </button>
+          <button class="btn btn-primary" onclick="openApptModal()">
+            <i class="ti ti-plus"></i> Add appointment
+          </button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="panel" id="appt-list"></div>
+      </div>
+    </div>
+    <!-- QUALITY REVIEW PAGE -->
+    <div id="page-quality" class="page">
+      <div class="main-header">
+        <div>
+          <h1>Quality Review</h1>
+          <div class="subtitle">Self-assess each appointment and find patterns</div>
+        </div>
+      </div>
+      <div class="content">
+        <div id="quality-patterns"></div>
+        <div id="quality-list"></div>
+      </div>
+    </div>
+
+    <!-- FOLLOW UP PAGE -->
+    <div id="page-followup" class="page">
+      <div id="holiday-banner"></div>
+      <div class="main-header">
+        <div>
+          <h1>Follow Ups</h1>
+          <div class="subtitle">Leads grouped by city, sorted by follow-up date</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="openEventModal()"><i class="ti ti-gift"></i> Add event</button>
+          <button class="btn btn-ghost" onclick="openImportPhotoModal()"><i class="ti ti-camera"></i> Import photo</button>
+          <button class="btn btn-primary" onclick="openLeadModal()"><i class="ti ti-plus"></i> Add lead</button>
+        </div>
+      </div>
+      <div class="content">
+        <div id="fu-events-section"></div>
+        <div class="fu-toolbar">
+          <div class="filter-group" id="fu-interest-filters">
+            <button class="filter-btn active" onclick="setInterestFilter('all',this)">All</button>
+            <button class="filter-btn" onclick="setInterestFilter('hot',this)">🔥 Hot</button>
+            <button class="filter-btn" onclick="setInterestFilter('warm',this)">👍 Warm</button>
+            <button class="filter-btn" onclick="setInterestFilter('cold',this)">❄️ Cold</button>
+          </div>
+          <div class="filter-group" id="fu-urgency-filters">
+            <button class="filter-btn active" onclick="setUrgencyFilter('all',this)">Any time</button>
+            <button class="filter-btn" onclick="setUrgencyFilter('overdue',this)">Overdue</button>
+            <button class="filter-btn" onclick="setUrgencyFilter('week',this)">This week</button>
+            <button class="filter-btn" onclick="setUrgencyFilter('upcoming',this)">Upcoming</button>
+          </div>
+          <div class="view-toggle">
+            <button class="view-btn active" id="vbtn-list" onclick="setLeadsView('list')"><i class="ti ti-list"></i></button>
+            <button class="view-btn" id="vbtn-map" onclick="setLeadsView('map')"><i class="ti ti-map-2"></i></button>
+            <button class="view-btn" id="vbtn-cal" onclick="setLeadsView('cal')"><i class="ti ti-calendar-month"></i></button>
+          </div>
+        </div>
+        <div id="fu-leads-section"></div>
+        <div id="fu-map-section" style="display:none"><div id="fu-map"></div></div>
+        <div id="fu-cal-section" style="display:none"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="import-modal" style="display:none" onclick="if(event.target===this)closeImportModal()">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <h2>Import from RepCard CSV</h2>
+      <button class="close-btn" onclick="closeImportModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Your name in RepCard</label>
+          <input class="form-input" id="imp-name" placeholder="e.g. Kaysen Stevens" value="Kaysen Stevens">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assign to week</label>
+          <select class="form-select" id="imp-week"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Select CSV files (one per day)</label>
+        <input type="file" class="form-input" id="imp-files" accept=".csv" multiple style="padding:7px 10px;cursor:pointer">
+      </div>
+      <div id="imp-preview" style="margin-top:4px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeImportModal()">Cancel</button>
+      <button class="btn btn-primary" id="imp-btn" onclick="doImport()" style="display:none">Import rows</button>
+    </div>
+  </div>
+</div>
+
+<!-- Appointment Import Modal -->
+<div class="modal-overlay" id="appt-import-modal" style="display:none" onclick="if(event.target===this)closeApptImportModal()">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h2>Import appointments from RepCard</h2>
+      <button class="close-btn" onclick="closeApptImportModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Select RepCard appointment CSV</label>
+        <input type="file" class="form-input" id="appt-imp-file" accept=".csv" style="padding:7px 10px;cursor:pointer">
+      </div>
+      <div id="appt-imp-preview"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeApptImportModal()">Cancel</button>
+      <button class="btn btn-primary" id="appt-imp-btn" onclick="doApptImport()" style="display:none">Import appointments</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lead Modal -->
+<div class="modal-overlay" id="lead-modal" style="display:none" onclick="if(event.target===this)closeLeadModal()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h2 id="lead-modal-title">Add lead</h2>
+      <button class="close-btn" onclick="closeLeadModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input class="form-input" id="ld-name" placeholder="e.g. David and Amanda">
+        </div>
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input class="form-input" id="ld-city" placeholder="e.g. Corona">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Phone number</label>
+          <input class="form-input" id="ld-phone" placeholder="(555) 555-5555">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Interest level</label>
+          <select class="form-select" id="ld-interest">
+            <option value="">-- Select --</option>
+            <option value="🔥 Hot">🔥 Hot</option>
+            <option value="👍 Warm">👍 Warm</option>
+            <option value="❄️ Cold">❄️ Cold</option>
+            <option value="✅ Closed">✅ Closed</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input class="form-input" id="ld-address" placeholder="Street address">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Follow-up date</label>
+          <input class="form-input" type="date" id="ld-followup">
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
+          <label class="check-item">
+            <input type="checkbox" id="ld-gift" style="accent-color:var(--accent)">
+            <span style="font-size:13px">Needs a gift</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Best days to catch them</label>
+        <div class="day-chips">
+          <span class="day-chip"><input type="checkbox" id="ld-day-mon" value="Mon"><label for="ld-day-mon">Mon</label></span>
+          <span class="day-chip"><input type="checkbox" id="ld-day-tue" value="Tue"><label for="ld-day-tue">Tue</label></span>
+          <span class="day-chip"><input type="checkbox" id="ld-day-wed" value="Wed"><label for="ld-day-wed">Wed</label></span>
+          <span class="day-chip"><input type="checkbox" id="ld-day-thu" value="Thu"><label for="ld-day-thu">Thu</label></span>
+          <span class="day-chip"><input type="checkbox" id="ld-day-fri" value="Fri"><label for="ld-day-fri">Fri</label></span>
+          <span class="day-chip"><input type="checkbox" id="ld-day-sat" value="Sat"><label for="ld-day-sat">Sat</label></span>
+          <span class="day-chip"><input type="checkbox" id="ld-day-sun" value="Sun"><label for="ld-day-sun">Sun</label></span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Best time (from)</label>
+          <input class="form-input" type="time" id="ld-time-from">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Best time (to)</label>
+          <input class="form-input" type="time" id="ld-time-to">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="notes-input" id="ld-notes" placeholder="Context, objections, what they said..." style="min-height:80px"></textarea>
+      </div>
+      <div id="ld-contact-log"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="ld-delete-btn" style="display:none;margin-right:auto" onclick="deleteLead()"><i class="ti ti-trash"></i> Delete</button>
+      <button class="btn btn-ghost" onclick="closeLeadModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLead()">Save lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Event Modal -->
+<div class="modal-overlay" id="event-modal" style="display:none" onclick="if(event.target===this)closeEventModal()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h2 id="event-modal-title">Add important event</h2>
+      <button class="close-btn" onclick="closeEventModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Customer name</label>
+          <input class="form-input" id="ev-name" placeholder="Who is this for?">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Event type</label>
+          <select class="form-select" id="ev-type">
+            <option value="Birthday">🎂 Birthday</option>
+            <option value="Anniversary">💍 Anniversary</option>
+            <option value="New baby">👶 New baby</option>
+            <option value="Moving in">🏠 Moving in</option>
+            <option value="Holiday">🎄 Holiday</option>
+            <option value="Other">📅 Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Event date</label>
+          <input class="form-input" type="date" id="ev-date">
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
+          <label class="check-item">
+            <input type="checkbox" id="ev-gift" style="accent-color:var(--accent)">
+            <span style="font-size:13px">Bring a gift</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Gift idea / notes</label>
+        <textarea class="notes-input" id="ev-notes" placeholder="Gift idea or context..." style="min-height:60px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="ev-delete-btn" style="display:none;margin-right:auto" onclick="deleteEvent()"><i class="ti ti-trash"></i> Delete</button>
+      <button class="btn btn-ghost" onclick="closeEventModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEvent()">Save event</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Photo Modal -->
+<div class="modal-overlay" id="import-photo-modal" style="display:none" onclick="if(event.target===this)closeImportPhotoModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Import leads from photo</h2>
+      <button class="close-btn" onclick="closeImportPhotoModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:10px;font-size:13px;color:var(--text2)">
+        Upload screenshots of your Customer Follow Up Sheets. Claude AI will read them and add the leads automatically.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Anthropic API Key <span style="color:var(--text3);font-weight:400">(saved locally, never sent anywhere else)</span></label>
+        <input class="form-input" type="password" id="ip-apikey" placeholder="sk-ant-..." autocomplete="off">
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Get a free key at <span style="color:var(--accent)">console.anthropic.com</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Screenshots</label>
+        <div id="ip-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color 0.2s" onclick="document.getElementById('ip-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleIPDrop(event)">
+          <i class="ti ti-photo-up" style="font-size:32px;color:var(--text3)"></i>
+          <div style="color:var(--text2);margin-top:8px">Tap to choose photos or drag & drop</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">PNG, JPG — multiple allowed</div>
+        </div>
+        <input type="file" id="ip-file-input" accept="image/*" multiple style="display:none" onchange="handleIPFiles(this.files)">
+        <div id="ip-previews" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
+      </div>
+      <div id="ip-status" style="display:none;padding:12px;border-radius:10px;font-size:13px;margin-top:4px"></div>
+      <div id="ip-results" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeImportPhotoModal()">Cancel</button>
+      <button class="btn btn-primary" id="ip-submit-btn" onclick="runImportPhoto()"><i class="ti ti-sparkles"></i> Extract leads</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile month bar -->
+<div class="mobile-month-bar">
+  <select id="monthSelectMobile" onchange="document.getElementById('monthSelect').value=this.value;changeMonth()"></select>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mobile-nav-btn active" onclick="showPage('dashboard',this)" id="mnav-dashboard">
+      <i class="ti ti-layout-dashboard"></i><span>Dashboard</span>
+    </button>
+    <button class="mobile-nav-btn" onclick="showPage('weeks',this)" id="mnav-weeks">
+      <i class="ti ti-calendar-week"></i><span>Weekly</span>
+    </button>
+    <button class="mobile-nav-btn" onclick="showPage('appointments',this)" id="mnav-appointments">
+      <i class="ti ti-calendar-check"></i><span>Appts</span>
+    </button>
+    <button class="mobile-nav-btn" onclick="showPage('quality',this)" id="mnav-quality">
+      <i class="ti ti-clipboard-check"></i><span>Quality</span>
+    </button>
+    <button class="mobile-nav-btn" onclick="showPage('followup',this)" id="mnav-followup">
+      <i class="ti ti-users"></i><span>Follow Up</span>
+    </button>
+    <button class="mobile-nav-btn" onclick="openSyncModal()" id="mnav-sync">
+      <i class="ti ti-cloud" id="sync-icon-mobile"></i><span id="sync-label-mobile">Sync</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Sync Modal -->
+<div class="modal-overlay" id="sync-modal" style="display:none" onclick="if(event.target===this)closeSyncModal()">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-header">
+      <h2><i class="ti ti-cloud"></i> Sync across devices</h2>
+      <button class="close-btn" onclick="closeSyncModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body" id="sync-modal-body">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><i class="ti ti-check"></i> <span id="toast-msg">Saved</span></div>
+
+<!-- Week Modal -->
+<div class="modal-overlay" id="week-modal" style="display:none" onclick="if(event.target===this)closeWeekModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="week-modal-title">Add week</h2>
+      <button class="close-btn" onclick="closeWeekModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Area name</label>
+          <input class="form-input" id="wk-area" placeholder="e.g. Yorba Linda">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date range label</label>
+          <input class="form-input" id="wk-range" placeholder="e.g. 1st – 6th">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeWeekModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWeek()">Add week</button>
+    </div>
+  </div>
+</div>
+
+<!-- Appointment Modal -->
+<div class="modal-overlay" id="appt-modal" style="display:none" onclick="if(event.target===this)closeApptModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="appt-modal-title">Add appointment</h2>
+      <button class="close-btn" onclick="closeApptModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Contact name</label>
+          <input class="form-input" id="ap-name" placeholder="Homeowner name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" id="ap-date">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Address / notes</label>
+          <input class="form-input" id="ap-address" placeholder="Street address">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area</label>
+          <input class="form-input" id="ap-area" placeholder="e.g. Yorba Linda">
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="form-label" style="margin-bottom:10px">Appointment quality</div>
+      <div class="checkbox-group">
+        <label class="check-item"><input type="checkbox" id="ap-both-spouses"><span>Both spouses present</span></label>
+        <label class="check-item"><input type="checkbox" id="ap-powerbill"><span>Power bill obtained (PB)</span></label>
+        <label class="check-item"><input type="checkbox" id="ap-24h"><span>Set within 24 hours of knocking</span></label>
+      </div>
+
+      <div class="divider"></div>
+      <div class="form-group">
+        <label class="form-label">Disposition</label>
+        <select class="form-select" id="ap-disp">
+          <option value="">-- Select outcome --</option>
+          <option value="Closed">Closed</option>
+          <option value="Follow Up">Follow Up</option>
+          <option value="Reschedule">Reschedule</option>
+          <option value="No Show">No Show</option>
+          <option value="NTR">NTR (Not the right time)</option>
+          <option value="Cancel">Cancel</option>
+          <option value="Fail">Fail</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeApptModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAppt()">Save appointment</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const COLS = ['dk','qp','sets','sits','closes','fails'];
+
+let state = { months: {} };
+let currentMonth = '';
+let editingWeekId = null;
+let editingApptId = null;
+let dkChart = null, funnelChart = null;
+
+function getMonth(m) {
+  if (!state.months[m]) state.months[m] = { weeks: [], appointments: [] };
+  return state.months[m];
+}
+
+function save() {
+  localStorage.setItem('d2d_v3', JSON.stringify(state));
+  if (typeof syncEnabled !== 'undefined' && syncEnabled) pushToCloud();
+}
+
+const SEED_DATA = {"months":{"2026-06":{"weeks":[],"appointments":[]}},"events":[{"customerName":"Darren and Robin Walker","type":"Other","date":"2026-07-04","needsGift":true,"notes":"Drop off something for 4th of July — roof getting replaced soon, 100% buyers"},{"customerName":"Luis Contreras","type":"New baby","date":"2026-07-10","needsGift":true,"notes":"6 month old baby girl — bring baby gift when following up"}],"leads":[{"name":"Raj Singh","city":"Irvine","phone":"9494001910","address":"","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Sat with Tyce April 24th, had a family member pass away that was using a lot of electricity from their medical equipment so they wanted to see some bills without him there. Wife's number is Seema (9494001910). Follow up monthly.","createdAt":"2026-04-24T00:00:00.000Z"},{"name":"Jeanne","city":"Temecula","phone":"9513266611","address":"","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Relative that is sick and passing away is still on the house but she wants solar, follow up.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Logan Deaborn","city":"Temecula","phone":"9162120302","address":"","interest":"Warm","followUpDate":"","needsGift":false,"notes":"New move in has a sick truck, was a needs to reschedule, was planning on looking into solar but was heading out of town.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Michael Romero","city":"Corona","phone":"9515324386","address":"","interest":"Hot","followUpDate":"2026-05-01","needsGift":false,"notes":"Adding onto his house, follow up in 2 months wants solar. Follow up 5/1.","createdAt":"2026-03-01T00:00:00.000Z"},{"name":"Javier Carazo","city":"Corona","phone":"9515884943","address":"1828 Couples Rd Corona","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Sat with Austin and loved it was just getting quotes.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Alvaro Alcocer","city":"Lake Elsinore","phone":"2133322546","address":"29415 High Ridge Dr","interest":"Hot","followUpDate":"2026-06-17","needsGift":false,"notes":"Just moved in two weeks ago and told me to come back in two weeks to talk numbers. Follow up 6/17.","createdAt":"2026-06-03T00:00:00.000Z"},{"name":"Michelle Schwartz","city":"Norco","phone":"9512180629","address":"3557 Bluff St Apt B","interest":"Hot","followUpDate":"2026-08-01","needsGift":false,"notes":"Real estate agent, caught her at the rental while knocking, sent her a video and she called me super interested. Can't do anything till August 1, reach out on August 1.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Pablo and Kathy Lopez","city":"","phone":"","address":"","interest":"Warm","followUpDate":"2026-05-09","needsGift":false,"notes":"Are doing a six week remodel on their house, but are interested after 5/9.","createdAt":"2026-04-01T00:00:00.000Z"},{"name":"Joseph and Gracie","city":"Upland","phone":"6268265681","address":"","interest":"Hot","followUpDate":"2026-05-12","needsGift":true,"notes":"Works at an oil refinery, buying the parents house in the summertime, pay over $1,000 in the summer. Super cool people, had to reschedule cause mom went to the hospital. Door dashed them flowers. Follow up later 5/12.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Tara Exzabe","city":"","phone":"","address":"","interest":"","followUpDate":"","needsGift":false,"notes":"","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Jeffrey Stenzel","city":"Placentia","phone":"7149155993","address":"616 Candlewood Ave Placentia","interest":"Hot","followUpDate":"","needsGift":false,"notes":"Was an absolute laydown, didn't do it cause covid was hectic. Was a one legger set, just needs to get back on the schedule, claims he's too busy.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Mario Carbajal","city":"West Claremont","phone":"6262523334","address":"168 Armstrong Dr West Claremont","interest":"Hot","followUpDate":"","needsGift":false,"notes":"Loves the solar, has an eyepatch. NEEDS A ROOFER ASAP. Barrel tile w/ Repaper.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Macy and Jake Euston","city":"Glendora","phone":"6268257324","address":"1035 E Mountain View Ave Glendora","interest":"Hot","followUpDate":"","needsGift":false,"notes":"Pay a super high bill and are laydowns.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Ivan and Yvette","city":"La Verne","phone":"9099224306","address":"6424 Canterwood Rd La Verne","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Needs a new partial roof then will sign.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Mario Ortiz","city":"La Verne","phone":"6266762662","address":"6813 Wheeler Ave La Verne","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Is interested in solar but has a lot going on with their daughter passing away a year ago. Check in on them when summer bills hit.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Jose Manual","city":"La Verne","phone":"9095781982","address":"6778 Warm Springs Ave La Verne 91750","interest":"Hot","followUpDate":"2026-05-25","needsGift":false,"notes":"Lived there for a year, sat with Logan and is for sure doing solar, just wants to decide if he's doing a PPA or prepaid lease. Logan said he was following up with him the 25th of May.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Luis Contreras","city":"La Verne","phone":"9097869321","address":"6929 Sherwood Dr La Verne","interest":"Warm","followUpDate":"","needsGift":true,"notes":"Just moved in on May 18th and wants to do solar. Owns a plumbing business with his dad and his dad has solar and loves it. Said to hit him up in two months when they're more settled in. Has a 6 month old baby girl.","createdAt":"2026-05-18T00:00:00.000Z"},{"name":"Christopher Reyes","city":"La Verne","phone":"6262971393","address":"6701 Sherwood Dr La Verne","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Lives by Mario and Luis. Has wanted to do solar but is concerned about roof and didn't like the loan the last people pitched him. Has a newborn baby and gets home from work at 7pm which is when the baby goes down.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Darren and Robin Walker","city":"La Verne","phone":"9099739863","address":"6678 Sherwood Dr La Verne","interest":"Hot","followUpDate":"","needsGift":true,"notes":"Super cool people, were skeptical at first but 100% buyers. Are getting their roof replaced very soon and want to do solar. Got Redo Bins number and dropped off a treat on Memorial Day.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Jackie Selditch","city":"La Verne","phone":"9097201421","address":"6904 Wheeler Ave La Verne","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Was super down cause she thought it put a lien on the house. Pays a lot for power, works in escrow so end of month is super busy. Talked to daughter Betsy. Best time: Fridays, weekends, maybe Mondays, second week of the month in the evenings.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Jessica and John Aragon","city":"West Claremont","phone":"5629222247","address":"146 Sweetbriar Dr Claremont","interest":"Warm","followUpDate":"2026-07-25","needsGift":false,"notes":"Failed credit, sat with Austin. Has a young kid and moved in a year ago. Wife's credit was close but not close enough. Follow up in a couple months 5/25.","createdAt":"2026-05-25T00:00:00.000Z"},{"name":"Duane and Alexandra","city":"West Claremont","phone":"","address":"","interest":"","followUpDate":"","needsGift":false,"notes":"","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Rose Wentz","city":"Glendora","phone":"8184270530","address":"","interest":"Warm","followUpDate":"","needsGift":false,"notes":"2018 Citizen of the year in Glendora, 80+ years old and needs her niece involved.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Mai and Hoyin","city":"Glendora","phone":"6263781063","address":"","interest":"Warm","followUpDate":"2026-05-30","needsGift":false,"notes":"Just moved in last week and wants to settle in before doing anything. Stop by in a couple months or after they get their first bill. 5/30.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Jennifer and Marco","city":"Glendora","phone":"3234942482","address":"","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Need a roof and solar. Police officer and stay at home mom. Said they didn't go with last guy cause roof was too expensive.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Marco and Shadow","city":"Placentia","phone":"9086700040","address":"634 Pinehurst Ave Placentia","interest":"Warm","followUpDate":"2026-06-03","needsGift":false,"notes":"He owns a Christian rehab company. Set him at 10PM, super cool dude, earned his respect. NTR 6/3.","createdAt":"2026-05-01T00:00:00.000Z"},{"name":"Ronnie and Jacinda","city":"Placentia","phone":"6198178777","address":"1026 Azelea Placentia CA","interest":"Warm","followUpDate":"","needsGift":false,"notes":"Runs a car dealership. Him and his wife used to work together. Scheduled appointment with wife but didn't work out. Reschedule for a different time. Has two sons on the spectrum.","createdAt":"2026-05-01T00:00:00.000Z"}]};
+
+function load() {
+  try { state = JSON.parse(localStorage.getItem('d2d_v3')) || { months: {} }; } catch(e) { state = { months: {} }; }
+  // Seed leads/events if this is a fresh install with no leads yet
+  if (!state.leads || state.leads.length === 0) {
+    state.leads = SEED_DATA.leads;
+    state.events = SEED_DATA.events;
+    save();
+  }
+}
+
+function monthName(m) {
+  const [y, mo] = m.split('-');
+  return new Date(+y, +mo-1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function initMonthPicker() {
+  const sels = [document.getElementById('monthSelect'), document.getElementById('monthSelectMobile')];
+  const now = new Date();
+  sels.forEach(sel => {
+    if (!sel) return;
+    sel.innerHTML = '';
+    for (let i = -3; i <= 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (i === 0) { opt.selected = true; currentMonth = val; }
+      sel.appendChild(opt);
+    }
+  });
+}
+
+function changeMonth() {
+  currentMonth = document.getElementById('monthSelect').value;
+  renderAll();
+}
+
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-btn').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  const mnavEl = document.getElementById('mnav-' + name);
+  if (mnavEl) mnavEl.classList.add('active');
+  document.querySelector('.main').scrollTo(0, 0);
+  renderAll();
+}
+
+function renderAll() {
+  renderDashboard();
+  renderWeeks();
+  renderAppointments();
+  renderQuality();
+  renderFollowUp();
+}
+
+/* ---- Aggregation ---- */
+function aggregateWeeks() {
+  const mo = getMonth(currentMonth);
+  const totals = { dk:0, qp:0, sets:0, sits:0, closes:0, fails:0 };
+  const byDay = {};
+  DAYS.forEach(d => { byDay[d] = { dk:0, qp:0, sets:0, sits:0, closes:0, fails:0 }; });
+
+  mo.weeks.forEach(wk => {
+    DAYS.forEach(day => {
+      COLS.forEach(col => {
+        const v = +((wk.days[day] || {})[col] || 0);
+        totals[col] += v;
+        byDay[day][col] += v;
+      });
+    });
+  });
+  return { totals, byDay };
+}
+
+function aggregateAppts() {
+  const mo = getMonth(currentMonth);
+  const appts = mo.appointments;
+  const qual = { bothSpouses: 0, pb: 0, within24h: 0, total: appts.length };
+  const disp = { Closed:0, 'Follow Up':0, Reschedule:0, 'No Show':0, NTR:0, Cancel:0, Fail:0 };
+  appts.forEach(a => {
+    if (a.bothSpouses) qual.bothSpouses++;
+    if (a.pb) qual.pb++;
+    if (a.within24h) qual.within24h++;
+    if (a.disposition && disp[a.disposition] !== undefined) disp[a.disposition]++;
+  });
+  return { qual, disp };
+}
+
+/* ---- Dashboard ---- */
+function renderDashboard() {
+  const { totals, byDay } = aggregateWeeks();
+  const { qual, disp } = aggregateAppts();
+  const mo = getMonth(currentMonth);
+
+  document.getElementById('dash-title').textContent = monthName(currentMonth);
+  document.getElementById('dash-subtitle').textContent =
+    `${mo.weeks.length} week${mo.weeks.length !== 1 ? 's' : ''} · ${mo.appointments.length} appointment${mo.appointments.length !== 1 ? 's' : ''}`;
+
+  const stats = [
+    { label: 'Doors knocked', value: totals.dk, cls: 'blue', icon: 'ti-door' },
+    { label: 'Qualified pitches', value: totals.qp, cls: 'purple', icon: 'ti-speakerphone' },
+    { label: 'Sets', value: totals.sets, cls: 'teal', icon: 'ti-calendar-plus' },
+    { label: 'Sits', value: totals.sits, cls: 'amber', icon: 'ti-armchair' },
+    { label: 'Closes', value: totals.closes, cls: 'green', icon: 'ti-circle-check' },
+    { label: 'Fails', value: totals.fails, cls: 'red', icon: 'ti-x' },
+  ];
+  document.getElementById('dash-stats').innerHTML = stats.map(s => `
+    <div class="stat-card ${s.cls}">
+      <div class="label">${s.label}</div>
+      <div class="value">${s.value}</div>
+    </div>
+  `).join('');
+
+  const dk2set = totals.sets > 0 ? Math.round(totals.dk / totals.sets) : '—';
+  const set2sit = totals.sets > 0 ? Math.round((totals.sits / totals.sets)*100) + '%' : '—';
+  const sit2close = totals.sits > 0 ? Math.round((totals.closes / totals.sits)*100) + '%' : '—';
+  const dkqp = totals.qp > 0 ? (totals.dk / totals.qp).toFixed(1) : '—';
+
+  document.getElementById('dash-ratios').innerHTML = `
+    <div class="ratio-card"><span class="rl">DK per Set</span><span class="rv">${dk2set}</span></div>
+    <div class="ratio-card"><span class="rl">Set → Sit</span><span class="rv">${set2sit}</span></div>
+    <div class="ratio-card"><span class="rl">Sit → Close</span><span class="rv">${sit2close}</span></div>
+  `;
+
+  // DK chart
+  const dkData = DAYS.map(d => byDay[d].dk);
+  if (dkChart) dkChart.destroy();
+  const dkCtx = document.getElementById('dkChart').getContext('2d');
+  dkChart = new Chart(dkCtx, {
+    type: 'bar',
+    data: {
+      labels: DAYS.map(d => d.substring(0,3)),
+      datasets: [{
+        label: 'DK',
+        data: dkData,
+        backgroundColor: 'rgba(59,130,246,0.6)',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9090a8', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9090a8', font: { size: 11 } }, beginAtZero: true }
+      }
+    }
+  });
+
+  // Funnel chart
+  if (funnelChart) funnelChart.destroy();
+  const fCtx = document.getElementById('funnelChart').getContext('2d');
+  funnelChart = new Chart(fCtx, {
+    type: 'bar',
+    data: {
+      labels: ['DK','QP','Sets','Sits','Closes'],
+      datasets: [{
+        label: 'Count',
+        data: [totals.dk, totals.qp, totals.sets, totals.sits, totals.closes],
+        backgroundColor: ['rgba(59,130,246,0.6)','rgba(168,85,247,0.6)','rgba(20,184,166,0.6)','rgba(245,158,11,0.6)','rgba(34,197,94,0.6)'],
+        borderColor: ['#3b82f6','#a855f7','#14b8a6','#f59e0b','#22c55e'],
+        borderWidth: 1,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9090a8', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#9090a8', font: { size: 11 } }, beginAtZero: true }
+      }
+    }
+  });
+
+  // Quality
+  const totalAppts = qual.total || 1;
+  document.getElementById('qual-display').innerHTML = qual.total === 0
+    ? '<div class="empty"><i class="ti ti-calendar-off"></i><p>No appointments yet</p></div>'
+    : [
+        { label: 'Both spouses', val: qual.bothSpouses, color: '#6c63ff' },
+        { label: 'Power bill (PB)', val: qual.pb, color: '#14b8a6' },
+        { label: 'Within 24 hours', val: qual.within24h, color: '#f59e0b' },
+      ].map(q => {
+        const pct = Math.round(q.val / qual.total * 100);
+        return `<div class="qual-row">
+          <div class="qual-label">${q.label}</div>
+          <div class="qual-bar-wrap"><div class="qual-bar" style="width:${pct}%;background:${q.color}"></div></div>
+          <div class="qual-pct" style="color:${q.color}">${pct}%</div>
+        </div>`;
+      }).join('') + `<div style="font-size:11px;color:var(--text3);margin-top:8px">${qual.total} total appointment${qual.total !== 1 ? 's' : ''}</div>`;
+
+  // Dispositions
+  const dispDefs = [
+    { key: 'Closed', color: '#22c55e' },
+    { key: 'Follow Up', color: '#6c63ff' },
+    { key: 'Reschedule', color: '#f59e0b' },
+    { key: 'NTR', color: '#9090a8' },
+    { key: 'No Show', color: '#ef4444' },
+    { key: 'Cancel', color: '#ef4444' },
+    { key: 'Fail', color: '#dc2626' },
+  ];
+  document.getElementById('disp-display').innerHTML = dispDefs.map(d => `
+    <div class="disp-item">
+      <div class="dl"><div class="dot" style="background:${d.color}"></div>${d.key}</div>
+      <div class="dv" style="color:${d.color}">${disp[d.key] || 0}</div>
+    </div>
+  `).join('');
+}
+
+/* ---- Weeks ---- */
+function renderWeeks() {
+  const mo = getMonth(currentMonth);
+  const cont = document.getElementById('weeks-content');
+
+  if (mo.weeks.length === 0) {
+    cont.innerHTML = `<div class="panel"><div class="empty"><i class="ti ti-calendar-off"></i><p>No weeks yet. Add a week to start tracking.</p></div></div>`;
+    return;
+  }
+
+  cont.innerHTML = mo.weeks.map((wk, wi) => `
+    <div class="panel week-section" style="margin-bottom:16px">
+      <div class="week-header">
+        <h3><span style="color:var(--text2)">${wk.area}</span> &nbsp;·&nbsp; ${wk.range}</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="deleteWeek(${wi})"><i class="ti ti-trash" style="font-size:13px"></i></button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:90px"></th>
+            <th class="col-dk">DK</th>
+            <th class="col-qp">QP</th>
+            <th class="col-set">Sets</th>
+            <th class="col-sit">Sits</th>
+            <th class="col-close">Closes</th>
+            <th class="col-fail">Fails</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${DAYS.map(day => `
+            <tr>
+              <td>${day}</td>
+              ${COLS.map(col => `
+                <td><input type="number" class="cell-input col-${col==='dk'?'dk':col==='qp'?'qp':col==='sets'?'set':col==='sits'?'sit':col==='closes'?'close':'fail'}"
+                  value="${(wk.days[day] || {})[col] || ''}"
+                  placeholder="—"
+                  oninput="updateCell(${wi},'${day}','${col}',this.value)"
+                  min="0"></td>
+              `).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr class="tfoot-row">
+            <td>Totals</td>
+            ${COLS.map(col => {
+              const sum = DAYS.reduce((a, d) => a + (+((wk.days[d]||{})[col]||0)), 0);
+              return `<td>${sum || 0}</td>`;
+            }).join('')}
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+      ${renderWeekRatios(wk)}
+    </div>
+  `).join('');
+}
+
+function renderWeekRatios(wk) {
+  let dk=0, qp=0, sets=0, sits=0, closes=0;
+  DAYS.forEach(d => {
+    dk += +((wk.days[d]||{}).dk||0);
+    qp += +((wk.days[d]||{}).qp||0);
+    sets += +((wk.days[d]||{}).sets||0);
+    sits += +((wk.days[d]||{}).sits||0);
+    closes += +((wk.days[d]||{}).closes||0);
+  });
+  const dk2set = sets > 0 ? Math.round(dk/sets) + ':1' : '—';
+  const set2sit = sets > 0 ? Math.round(sits/sets*100) + '%' : '—';
+  const sit2close = sits > 0 ? Math.round(closes/sits*100) + '%' : '—';
+  return `<div style="display:flex;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="font-size:12px"><span style="color:var(--text3)">DK/Set </span><b style="color:var(--accent2)">${dk2set}</b></div>
+    <div style="font-size:12px"><span style="color:var(--text3)">Set/Sit </span><b style="color:var(--accent2)">${set2sit}</b></div>
+    <div style="font-size:12px"><span style="color:var(--text3)">Sit/Close </span><b style="color:var(--accent2)">${sit2close}</b></div>
+  </div>`;
+}
+
+function updateCell(wi, day, col, val) {
+  const mo = getMonth(currentMonth);
+  if (!mo.weeks[wi].days[day]) mo.weeks[wi].days[day] = {};
+  mo.weeks[wi].days[day][col] = val === '' ? 0 : +val;
+  save();
+  renderDashboard();
+  const tfoot = document.querySelectorAll('.tfoot-row')[wi];
+  if (tfoot) {
+    const wk = mo.weeks[wi];
+    const cells = tfoot.querySelectorAll('td');
+    COLS.forEach((c, i) => {
+      const sum = DAYS.reduce((a, d) => a + (+((wk.days[d]||{})[c]||0)), 0);
+      cells[i+1].textContent = sum;
+    });
+  }
+}
+
+function deleteWeek(wi) {
+  if (!confirm('Delete this week?')) return;
+  getMonth(currentMonth).weeks.splice(wi, 1);
+  save(); renderAll();
+}
+
+/* ---- Appointments ---- */
+function renderAppointments() {
+  const mo = getMonth(currentMonth);
+  const appts = mo.appointments;
+  const cont = document.getElementById('appt-list');
+
+  if (appts.length === 0) {
+    cont.innerHTML = `<div class="empty"><i class="ti ti-calendar-off"></i><p>No appointments logged yet.</p></div>`;
+    return;
+  }
+
+  const dispColor = { Closed: 'green', 'Follow Up': 'purple', Reschedule: 'amber', 'No Show': 'red', NTR: 'gray', Cancel: 'red', Fail: 'red' };
+
+  cont.innerHTML = appts.slice().reverse().map((a, ri) => {
+    const i = appts.length - 1 - ri;
+    const badges = [
+      a.bothSpouses ? '<span class="badge badge-blue">Both spouses</span>' : '',
+      a.pb ? '<span class="badge badge-teal">PB</span>' : '',
+      a.within24h ? '<span class="badge badge-amber">24h set</span>' : '',
+    ].filter(Boolean).join('');
+    const dc = dispColor[a.disposition] || 'gray';
+    return `<div class="appt-item">
+      <div>
+        <div class="appt-name">${a.name || 'Unnamed'}</div>
+        <div class="appt-meta">
+          <span>${a.date || ''}</span>
+          ${a.area ? `<span>· ${a.area}</span>` : ''}
+          ${a.address ? `<span>· ${a.address}</span>` : ''}
+        </div>
+        <div class="appt-badges">${badges}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        ${a.disposition ? `<span class="badge badge-${dc}">${a.disposition}</span>` : ''}
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="deleteAppt(${i})"><i class="ti ti-trash" style="font-size:12px"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteAppt(i) {
+  if (!confirm('Delete this appointment?')) return;
+  getMonth(currentMonth).appointments.splice(i, 1);
+  save(); renderAll();
+}
+
+/* ---- Modals ---- */
+function openWeekModal() {
+  document.getElementById('wk-area').value = '';
+  document.getElementById('wk-range').value = '';
+  document.getElementById('week-modal').style.display = 'flex';
+}
+function closeWeekModal() { document.getElementById('week-modal').style.display = 'none'; }
+function saveWeek() {
+  const area = document.getElementById('wk-area').value.trim();
+  const range = document.getElementById('wk-range').value.trim();
+  if (!area) { alert('Please enter an area name.'); return; }
+  getMonth(currentMonth).weeks.push({ area, range, days: {} });
+  save(); closeWeekModal(); renderAll(); toast('Week added');
+}
+
+function openApptModal() {
+  document.getElementById('ap-name').value = '';
+  document.getElementById('ap-date').value = new Date().toISOString().substring(0,10);
+  document.getElementById('ap-address').value = '';
+  document.getElementById('ap-area').value = '';
+  document.getElementById('ap-both-spouses').checked = false;
+  document.getElementById('ap-powerbill').checked = false;
+  document.getElementById('ap-24h').checked = false;
+  document.getElementById('ap-disp').value = '';
+  document.getElementById('appt-modal').style.display = 'flex';
+}
+function closeApptModal() { document.getElementById('appt-modal').style.display = 'none'; }
+function saveAppt() {
+  const name = document.getElementById('ap-name').value.trim();
+  if (!name) { alert('Please enter a contact name.'); return; }
+  getMonth(currentMonth).appointments.push({
+    name,
+    date: document.getElementById('ap-date').value,
+    address: document.getElementById('ap-address').value.trim(),
+    area: document.getElementById('ap-area').value.trim(),
+    bothSpouses: document.getElementById('ap-both-spouses').checked,
+    pb: document.getElementById('ap-powerbill').checked,
+    within24h: document.getElementById('ap-24h').checked,
+    disposition: document.getElementById('ap-disp').value,
+  });
+  save(); closeApptModal(); renderAll(); toast('Appointment saved');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+/* ---- RepCard Import ---- */
+let importedRows = [];
+
+function openImportModal() {
+  const mo = getMonth(currentMonth);
+  const sel = document.getElementById('imp-week');
+  sel.innerHTML = mo.weeks.length === 0
+    ? '<option value="">-- No weeks yet, add one first --</option>'
+    : mo.weeks.map((w, i) => `<option value="${i}">${w.area} · ${w.range}</option>`).join('');
+  document.getElementById('imp-preview').innerHTML = '';
+  document.getElementById('imp-files').value = '';
+  document.getElementById('imp-btn').style.display = 'none';
+  importedRows = [];
+  document.getElementById('import-modal').style.display = 'flex';
+}
+function closeImportModal() { document.getElementById('import-modal').style.display = 'none'; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('imp-files').addEventListener('change', handleImportFiles);
+  document.getElementById('imp-name').addEventListener('input', handleImportFiles);
+});
+
+function parseCSV(text) {
+  return text.trim().split('\n').map(line => {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; continue; }
+      if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; continue; }
+      cur += c;
+    }
+    cols.push(cur.trim());
+    return cols;
+  });
+}
+
+function handleImportFiles() {
+  const files = document.getElementById('imp-files').files;
+  const repName = document.getElementById('imp-name').value.trim().toLowerCase();
+  if (!files.length || !repName) return;
+
+  importedRows = [];
+  const preview = document.getElementById('imp-preview');
+  preview.innerHTML = '<div style="color:var(--text3);font-size:12px;margin-bottom:8px">Reading files...</div>';
+
+  let pending = files.length;
+  const results = Array(files.length).fill(null);
+
+  Array.from(files).forEach((file, fi) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const rows = parseCSV(e.target.result);
+      const header = rows[0];
+      const dkIdx = header.findIndex(h => h.toLowerCase().includes('doors knocked'));
+      const qpIdx = header.findIndex(h => h.toLowerCase().includes('qualified pitch'));
+      const setIdx = header.findIndex(h => h.toLowerCase().includes('appointments set'));
+      const sitIdx = header.findIndex(h => h.toLowerCase().includes('appointments sat'));
+      const closeIdx = header.findIndex(h => h.toLowerCase().includes('closed'));
+      const userIdx = header.findIndex(h => h.toLowerCase() === 'user');
+
+      const match = rows.find((r, i) => i > 0 && r[userIdx] && r[userIdx].toLowerCase() === repName);
+      results[fi] = match ? {
+        fileName: file.name,
+        dk: +match[dkIdx] || 0,
+        qp: +match[qpIdx] || 0,
+        sets: +match[setIdx] || 0,
+        sits: +match[sitIdx] || 0,
+        closes: +match[closeIdx] || 0,
+        day: '',
+      } : { fileName: file.name, notFound: true };
+
+      pending--;
+      if (pending === 0) renderImportPreview(results.filter(Boolean));
+    };
+    reader.readAsText(file);
+  });
+}
+
+function renderImportPreview(results) {
+  importedRows = results;
+  const found = results.filter(r => !r.notFound);
+  const missing = results.filter(r => r.notFound);
+
+  let html = '';
+  if (missing.length) {
+    html += `<div style="color:var(--red);font-size:12px;margin-bottom:8px"><i class="ti ti-alert-circle" style="font-size:13px;vertical-align:-1px"></i> Name not found in ${missing.map(r=>r.fileName).join(', ')} — check spelling above.</div>`;
+  }
+  if (found.length) {
+    html += `<table style="width:100%;margin-top:4px">
+      <thead><tr>
+        <th style="text-align:left;font-size:11px;color:var(--text3);padding:6px 4px">File</th>
+        <th style="font-size:11px;color:var(--blue);padding:6px 4px">DK</th>
+        <th style="font-size:11px;color:var(--purple);padding:6px 4px">QP</th>
+        <th style="font-size:11px;color:var(--teal);padding:6px 4px">Sets</th>
+        <th style="font-size:11px;color:var(--amber);padding:6px 4px">Sits</th>
+        <th style="font-size:11px;color:var(--green);padding:6px 4px">Closes</th>
+        <th style="font-size:11px;color:var(--text3);padding:6px 4px">Assign day</th>
+      </tr></thead><tbody>`;
+    found.forEach((r, i) => {
+      const shortName = r.fileName.replace(/Dashboard\s*/i,'').replace(/\.csv$/i,'');
+      html += `<tr>
+        <td style="font-size:11px;color:var(--text2);padding:5px 4px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${shortName}</td>
+        <td style="text-align:center;font-size:12px;font-weight:600;color:var(--blue);padding:5px 4px">${r.dk}</td>
+        <td style="text-align:center;font-size:12px;font-weight:600;color:var(--purple);padding:5px 4px">${r.qp}</td>
+        <td style="text-align:center;font-size:12px;font-weight:600;color:var(--teal);padding:5px 4px">${r.sets}</td>
+        <td style="text-align:center;font-size:12px;font-weight:600;color:var(--amber);padding:5px 4px">${r.sits}</td>
+        <td style="text-align:center;font-size:12px;font-weight:600;color:var(--green);padding:5px 4px">${r.closes}</td>
+        <td style="padding:5px 4px">
+          <select class="form-select" style="padding:4px 8px;font-size:11px" onchange="importedRows.filter(x=>!x.notFound)[${i}].day=this.value">
+            <option value="">-- day --</option>
+            ${DAYS.map(d=>`<option value="${d}">${d}</option>`).join('')}
+          </select>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('imp-btn').style.display = 'inline-flex';
+  }
+  document.getElementById('imp-preview').innerHTML = html;
+}
+
+function doImport() {
+  const mo = getMonth(currentMonth);
+  const wkIdx = +document.getElementById('imp-week').value;
+  const wk = mo.weeks[wkIdx];
+  if (!wk) { alert('Please select a week first.'); return; }
+
+  const toImport = importedRows.filter(r => !r.notFound && r.day);
+  if (!toImport.length) { alert('Assign at least one file to a day.'); return; }
+
+  toImport.forEach(r => {
+    if (!wk.days[r.day]) wk.days[r.day] = {};
+    wk.days[r.day].dk = r.dk;
+    wk.days[r.day].qp = r.qp;
+    wk.days[r.day].sets = r.sets;
+    wk.days[r.day].sits = r.sits;
+    wk.days[r.day].closes = r.closes;
+  });
+  save();
+  closeImportModal();
+  renderAll();
+  toast(`Imported ${toImport.length} day${toImport.length !== 1 ? 's' : ''}`);
+}
+
+/* ---- Appointment Import ---- */
+let apptImportRows = [];
+
+const OUTCOME_MAP = {
+  'closed': 'Closed',
+  'follow up': 'Follow Up',
+  'needs to reschedule': 'Reschedule',
+  'appointment canceled': 'Cancel',
+  'no show': 'No Show',
+  'ntr': 'NTR',
+  'fail': 'Fail',
+};
+
+function openApptImportModal() {
+  document.getElementById('appt-imp-file').value = '';
+  document.getElementById('appt-imp-preview').innerHTML = '';
+  document.getElementById('appt-imp-btn').style.display = 'none';
+  apptImportRows = [];
+  document.getElementById('appt-import-modal').style.display = 'flex';
+}
+function closeApptImportModal() { document.getElementById('appt-import-modal').style.display = 'none'; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('appt-imp-file').addEventListener('change', handleApptImportFile);
+});
+
+function handleApptImportFile() {
+  const file = document.getElementById('appt-imp-file').files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = parseCSV(e.target.result);
+    const h = rows[0];
+    const col = name => h.findIndex(c => c.toLowerCase().includes(name.toLowerCase()));
+
+    const fNameIdx = col('first name');
+    const lNameIdx = col('last name');
+    const addrIdx = col('appointment address');
+    const notesIdx = col('appointment notes');
+    const outcomeIdx = col('appointment outcome');
+    const categoryIdx = col('appointment category');
+    const createdIdx = col('appt creation date');
+    const apptDateIdx = col('appointment date/time (local');
+
+    apptImportRows = rows.slice(1).filter(r => r.length > 3 && r[fNameIdx]).map((r, i) => {
+      const firstName = r[fNameIdx] || '';
+      const lastName = r[lNameIdx] || '';
+      const fullName = (firstName + ' ' + lastName).trim();
+      const outcome = (r[outcomeIdx] || '').trim();
+      const category = (r[categoryIdx] || '').trim().toLowerCase();
+      const created = r[createdIdx] ? new Date(r[createdIdx]) : null;
+      const apptDate = r[apptDateIdx] ? new Date(r[apptDateIdx]) : null;
+      const diffHours = (created && apptDate) ? (apptDate - created) / 3600000 : null;
+      const within24h = diffHours !== null && diffHours <= 24;
+      const bothSpouses = /\band\b/i.test(firstName);
+      const disposition = OUTCOME_MAP[outcome.toLowerCase()] || outcome;
+      const sat = category === 'sit';
+
+      return {
+        id: i,
+        name: fullName,
+        address: r[addrIdx] || '',
+        notes: r[notesIdx] || '',
+        date: apptDate ? apptDate.toLocaleDateString('en-CA') : '',
+        disposition,
+        bothSpouses,
+        within24h,
+        pb: false,
+        sat,
+        skip: false,
+      };
+    });
+
+    renderApptImportPreview();
+  };
+  reader.readAsText(file);
+}
+
+function renderApptImportPreview() {
+  if (!apptImportRows.length) {
+    document.getElementById('appt-imp-preview').innerHTML = '<div style="color:var(--red);font-size:12px">No appointments found in file.</div>';
+    return;
+  }
+
+  const dispColor = { Closed:'green','Follow Up':'purple',Reschedule:'amber','No Show':'red',NTR:'gray',Cancel:'red',Fail:'red' };
+
+  let html = `<div style="font-size:12px;color:var(--text3);margin-bottom:10px">${apptImportRows.length} appointment${apptImportRows.length!==1?'s':''} found — PB must be set manually below:</div>`;
+  html += `<div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">`;
+
+  apptImportRows.forEach((r, i) => {
+    const dc = dispColor[r.disposition] || 'gray';
+    html += `<div style="padding:12px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start" id="arow-${i}">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:13px;font-weight:500">${r.name}</span>
+          ${r.disposition ? `<span class="badge badge-${dc}" style="font-size:10px">${r.disposition}</span>` : ''}
+          ${r.sat ? '<span class="badge badge-teal" style="font-size:10px">Sat</span>' : '<span class="badge badge-gray" style="font-size:10px">No sit</span>'}
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">${r.date}${r.address ? ' · ' + r.address : ''}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+            <input type="checkbox" ${r.bothSpouses?'checked':''} onchange="apptImportRows[${i}].bothSpouses=this.checked" style="accent-color:var(--accent)"> Both spouses
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+            <input type="checkbox" ${r.within24h?'checked':''} onchange="apptImportRows[${i}].within24h=this.checked" style="accent-color:var(--accent)"> Within 24h
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+            <input type="checkbox" onchange="apptImportRows[${i}].pb=this.checked" style="accent-color:var(--accent)"> Power bill
+          </label>
+        </div>
+        ${r.notes ? `<div style="font-size:11px;color:var(--text3);margin-top:5px;font-style:italic">${r.notes.substring(0,120)}${r.notes.length>120?'…':''}</div>` : ''}
+      </div>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);cursor:pointer;flex-shrink:0">
+        <input type="checkbox" onchange="apptImportRows[${i}].skip=this.checked" style="accent-color:var(--red)"> Skip
+      </label>
+    </div>`;
+  });
+
+  html += '</div>';
+  document.getElementById('appt-imp-preview').innerHTML = html;
+  document.getElementById('appt-imp-btn').style.display = 'inline-flex';
+}
+
+function doApptImport() {
+  const mo = getMonth(currentMonth);
+  const toImport = apptImportRows.filter(r => !r.skip);
+  toImport.forEach(r => {
+    mo.appointments.push({
+      name: r.name,
+      date: r.date,
+      address: r.address,
+      area: '',
+      bothSpouses: r.bothSpouses,
+      pb: r.pb,
+      within24h: r.within24h,
+      disposition: r.disposition,
+    });
+  });
+  save();
+  closeApptImportModal();
+  renderAll();
+  toast(`Imported ${toImport.length} appointment${toImport.length!==1?'s':''}`);
+}
+
+/* ---- Quality Review ---- */
+const QA_QUESTIONS = [
+  { key: 'pb',               label: 'Power bill obtained (PB)',         section: 'Appointment Quality' },
+  { key: 'bothPitched',      label: 'Both spouses pitched',             section: 'Appointment Quality' },
+  { key: 'within24h',        label: 'Set within 24 hours',              section: 'Appointment Quality' },
+  { key: 'wasSimple',        label: 'Was it simple?',                   section: 'Appointment Quality' },
+  { key: 'didPullback',      label: 'Did you pull back?',               section: 'Appointment Quality' },
+  { key: 'numObjections',    label: '# of objections',                  section: 'Appointment Quality', type: 'number' },
+  { key: 'qualifyingQs',    label: 'Asked qualifying questions?',       section: 'Appointment Quality' },
+  { key: 'goodRelationship', label: 'Built a good relationship?',       section: 'Appointment Quality' },
+  { key: 'goodVibes',        label: 'Good vibes when leaving?',         section: 'Appointment Quality' },
+  { key: 'wereEngaged',      label: 'Were they engaged?',               section: 'Appointment Quality' },
+  { key: 'exp45min',         label: '45-minute expectation set?',               section: 'Expectations' },
+  { key: 'sitAtTable',       label: 'Corner of table?',                         section: 'Expectations' },
+  { key: 'transitioned',     label: 'Did they transition inside the house?',    section: 'Expectations' },
+  { key: 'numberSaved',      label: 'Number saved?',                            section: 'Cherry on Top', extraCredit: true },
+  { key: 'putInCalendar',    label: 'Put in calendar?',                         section: 'Cherry on Top', extraCredit: true },
+];
+
+function ensureQA(appt) {
+  if (!appt.qa) appt.qa = {};
+  if (appt.qa.pb === undefined && appt.pb !== undefined) appt.qa.pb = appt.pb ? 'yes' : null;
+  if (appt.qa.bothPitched === undefined && appt.bothSpouses !== undefined) appt.qa.bothPitched = appt.bothSpouses ? 'yes' : null;
+  if (appt.qa.within24h === undefined && appt.within24h !== undefined) appt.qa.within24h = appt.within24h ? 'yes' : null;
+  return appt;
+}
+
+function togglePatternBreakdown(header) {
+  patternBreakdownOpen = !patternBreakdownOpen;
+  const grid = document.getElementById('pattern-breakdown-grid');
+  const icon = header.querySelector('i');
+  if (grid) grid.style.display = patternBreakdownOpen ? 'grid' : 'none';
+  if (icon) { icon.className = patternBreakdownOpen ? 'ti ti-chevron-up' : 'ti ti-chevron-down'; }
+}
+
+function renderQuality() {
+  const mo = getMonth(currentMonth);
+  const appts = mo.appointments.map(ensureQA);
+
+  renderPatterns(appts);
+
+  const listEl = document.getElementById('quality-list');
+  if (!appts.length) {
+    listEl.innerHTML = `<div class="panel"><div class="empty"><i class="ti ti-clipboard-off"></i><p>No appointments yet. Import or add appointments first.</p></div></div>`;
+    return;
+  }
+
+  const dispColor = { Closed:'green','Follow Up':'purple',Reschedule:'amber','No Show':'red',NTR:'gray',Cancel:'red',Fail:'red' };
+
+  listEl.innerHTML = appts.map((a, i) => {
+    const dc = dispColor[a.disposition] || 'gray';
+    const answered = QA_QUESTIONS.filter(q => q.type !== 'number' && a.qa[q.key] !== undefined && a.qa[q.key] !== null && a.qa[q.key] !== '').length;
+    const total = QA_QUESTIONS.filter(q => q.type !== 'number').length;
+    const pct = total > 0 ? Math.round(answered / total * 100) : 0;
+    const barColor = pct === 100 ? 'var(--green)' : pct > 50 ? 'var(--amber)' : 'var(--red)';
+
+    return `<div class="qa-card">
+      <div class="qa-card-header" onclick="toggleQA(${i})">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+          <div>
+            <div style="font-size:13px;font-weight:500;margin-bottom:3px">${a.name || 'Unnamed'}</div>
+            <div style="font-size:11px;color:var(--text3)">${a.date || ''}${a.address ? ' · ' + a.address : ''}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+          ${a.disposition ? `<span class="badge badge-${dc}">${a.disposition}</span>` : ''}
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:3px">${pct}% complete</div>
+            <div style="width:80px;background:var(--bg3);border-radius:100px;height:4px"><div style="width:${pct}%;height:4px;border-radius:100px;background:${barColor}"></div></div>
+          </div>
+          <i class="ti ti-chevron-down" id="qa-chevron-${i}" style="font-size:16px;color:var(--text3);transition:transform 0.2s"></i>
+        </div>
+      </div>
+      <div class="qa-card-body" id="qa-body-${i}">
+        ${renderQABody(a, i)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderQABody(a, i) {
+  let html = '';
+  let lastSection = '';
+
+  QA_QUESTIONS.forEach(q => {
+    if (q.section !== lastSection) {
+      const isCherry = q.section === 'Cherry on Top';
+      html += `<div class="qa-section-label" style="${isCherry ? 'color:var(--purple)' : ''}">${isCherry ? '🍒 ' : ''}${q.section}${isCherry ? ' — extra credit' : ''}</div>`;
+      lastSection = q.section;
+    }
+    const val = a.qa[q.key];
+
+    if (q.type === 'number') {
+      html += `<div class="qa-row">
+        <div class="qa-label">${q.label}</div>
+        <input type="number" class="num-input" min="0" max="20" value="${val || 0}"
+          oninput="setQA(${i},'${q.key}',+this.value)">
+      </div>`;
+    } else {
+      html += `<div class="qa-row">
+        <div class="qa-label">${q.label}</div>
+        <div class="qa-controls">
+          <button class="yn-btn yes${val==='yes'?' active':''}" onclick="setQAYN(${i},'${q.key}','yes',this)">Yes</button>
+          <button class="yn-btn kinda${val==='kinda'?' active':''}" onclick="setQAYN(${i},'${q.key}','kinda',this)">Kinda</button>
+          <button class="yn-btn no${val==='no'?' active':''}" onclick="setQAYN(${i},'${q.key}','no',this)">No</button>
+        </div>
+      </div>`;
+    }
+  });
+
+  const notes = a.qa.whatChanged || '';
+  html += `<div class="qa-section-label">Reflection</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:4px">What could I have changed?</div>
+    <textarea class="notes-input" placeholder="Write anything you'd do differently next time..."
+      oninput="setQA(${i},'whatChanged',this.value)">${notes}</textarea>`;
+
+  return html;
+}
+
+function toggleQA(i) {
+  const body = document.getElementById('qa-body-' + i);
+  const chevron = document.getElementById('qa-chevron-' + i);
+  const open = body.classList.toggle('open');
+  chevron.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function setQAYN(i, key, val, btn) {
+  const mo = getMonth(currentMonth);
+  const appt = ensureQA(mo.appointments[i]);
+  const current = appt.qa[key];
+  appt.qa[key] = current === val ? null : val;
+  save();
+
+  const row = btn.closest('.qa-row');
+  row.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('active'));
+  if (appt.qa[key] !== null) btn.classList.add('active');
+
+  refreshPatterns();
+  refreshCompletionBar(i);
+}
+
+function setQA(i, key, val) {
+  const mo = getMonth(currentMonth);
+  ensureQA(mo.appointments[i]).qa[key] = val;
+  save();
+  refreshPatterns();
+}
+
+function refreshCompletionBar(i) {
+  const mo = getMonth(currentMonth);
+  const a = mo.appointments[i];
+  const answered = QA_QUESTIONS.filter(q => q.type !== 'number' && a.qa[q.key] !== undefined && a.qa[q.key] !== null && a.qa[q.key] !== '').length;
+  const total = QA_QUESTIONS.filter(q => q.type !== 'number').length;
+  const pct = Math.round(answered / total * 100);
+  const barColor = pct === 100 ? 'var(--green)' : pct > 50 ? 'var(--amber)' : 'var(--red)';
+  const header = document.querySelector(`#qa-body-${i}`)?.previousElementSibling;
+  if (!header) return;
+  const bar = header.querySelector('[style*="width:80px"] div');
+  const pctText = header.querySelector('[style*="font-size:10px"]');
+  if (bar) bar.style.width = pct + '%';
+  if (bar) bar.style.background = barColor;
+  if (pctText) pctText.textContent = pct + '% complete';
+}
+
+function refreshPatterns() {
+  const mo = getMonth(currentMonth);
+  renderPatterns(mo.appointments);
+}
+
+let patternBreakdownOpen = true;
+
+function renderPatterns(appts) {
+  const el = document.getElementById('quality-patterns');
+  if (!appts.length) { el.innerHTML = ''; return; }
+
+  const reviewed = appts.filter(a => a.qa && Object.keys(a.qa).length > 0);
+  if (!reviewed.length) {
+    el.innerHTML = `<div class="insight-box"><h3><i class="ti ti-info-circle" style="color:var(--blue)"></i> Fill out the checklists below to see pattern analysis</h3></div>`;
+    return;
+  }
+
+  const nonSits = appts.filter(a => a.disposition && ['Cancel','No Show','NTR','Reschedule'].includes(a.disposition) && a.qa);
+
+  const yesNoQs = QA_QUESTIONS.filter(q => q.type !== 'number');
+  const coreQs = yesNoQs.filter(q => !q.extraCredit);
+  const extraQs = yesNoQs.filter(q => q.extraCredit);
+
+  const calcStats = (qs) => qs.map(q => {
+    const answered = reviewed.filter(a => a.qa && (a.qa[q.key] === 'yes' || a.qa[q.key] === 'kinda' || a.qa[q.key] === 'no'));
+    // Yes = 1, Kinda = 0.5, No = 0
+    const yesScore = answered.reduce((acc, a) => acc + (a.qa[q.key] === 'yes' ? 1 : a.qa[q.key] === 'kinda' ? 0.5 : 0), 0);
+    const yesRate = answered.length > 0 ? yesScore / answered.length : null;
+    const hardYes = answered.filter(a => a.qa[q.key] === 'yes').length;
+    // non-sit yes rate for insight weighting
+    const nsAnswered = nonSits.filter(a => a.qa && (a.qa[q.key] === 'yes' || a.qa[q.key] === 'kinda' || a.qa[q.key] === 'no'));
+    const nsYesRate = nsAnswered.length > 0 ? nsAnswered.reduce((acc,a) => acc + (a.qa[q.key]==='yes'?1:a.qa[q.key]==='kinda'?0.5:0),0) / nsAnswered.length : null;
+    return { ...q, yesRate, hardYes, answered: answered.length, nsYesRate };
+  });
+
+  const stats = calcStats(coreQs);
+  const extraStats = calcStats(extraQs);
+
+  // Sort: lowest Yes% first (worst problems at top)
+  const gridStats = stats.filter(s => s.answered > 0).slice().sort((a,b) => (a.yesRate ?? 1) - (b.yesRate ?? 1));
+
+  // Build insights from lowest-performing questions
+  const insights = [];
+  gridStats.slice(0, 4).forEach(s => {
+    if (s.yesRate === null) return;
+    const pct = Math.round(s.yesRate * 100);
+    // Use non-sit rate if available for sharper insight
+    const refPct = s.nsYesRate !== null ? Math.round(s.nsYesRate * 100) : pct;
+    if (refPct < 40) {
+      insights.push({ icon: 'ti-alert-triangle', color: 'var(--red)', text: `<b style="color:var(--text)">"${s.label}"</b> — only ${pct}% Yes. This is a consistent weak spot that's likely hurting your results.` });
+    } else if (refPct < 65) {
+      insights.push({ icon: 'ti-alert-circle', color: 'var(--amber)', text: `<b style="color:var(--text)">"${s.label}"</b> — ${pct}% Yes. Room to improve here.` });
+    }
+  });
+
+  // Common "what changed" notes
+  const notes = appts.filter(a => a.qa?.whatChanged?.trim()).map(a => ({ name: a.name, note: a.qa.whatChanged, disp: a.disposition }));
+
+  let html = '';
+
+  if (insights.length) {
+    html += `<div class="insight-box">
+      <h3><i class="ti ti-bulb" style="color:var(--amber)"></i> Pattern analysis — ${reviewed.length} appointment${reviewed.length!==1?'s':''} reviewed</h3>
+      ${insights.map(ins => `<div class="insight-item"><i class="ti ${ins.icon}" style="color:${ins.color}"></i><span>${ins.text}</span></div>`).join('')}
+    </div>`;
+  }
+
+  // Collapsible core question breakdown — sorted worst first
+  if (gridStats.length) {
+    html += `<div class="pattern-collapse-header" onclick="togglePatternBreakdown(this)">
+      <span style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Question breakdown</span>
+      <i class="ti ${patternBreakdownOpen ? 'ti-chevron-up' : 'ti-chevron-down'}" style="font-size:14px;color:var(--text3)"></i>
+    </div>
+    <div class="pattern-grid" id="pattern-breakdown-grid" style="display:${patternBreakdownOpen ? 'grid' : 'none'}">`;
+    gridStats.forEach(s => {
+      const yesRate = Math.round(s.yesRate * 100);
+      // Red if low Yes%, orange if mid, green if high
+      const cls = yesRate < 40 ? 'danger' : yesRate < 70 ? 'warning' : 'ok';
+      const barColor = yesRate < 40 ? '#ef4444' : yesRate < 70 ? '#f59e0b' : '#22c55e';
+      html += `<div class="pattern-item ${cls}">
+        <div class="pattern-q">${s.label}</div>
+        <div class="pattern-bar-wrap"><div class="pattern-bar" style="width:${yesRate}%;background:${barColor}"></div></div>
+        <div class="pattern-pct" style="color:${barColor}">${yesRate}% Yes &nbsp;<span style="color:var(--text3);font-weight:400">(${s.answered} reviewed)</span></div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // Cherry on top breakdown (always positive framing, no collapse)
+  const extraGridStats = extraStats.filter(s => s.answered > 0);
+  if (extraGridStats.length) {
+    html += `<div style="font-size:12px;font-weight:600;color:var(--purple);margin:16px 0 10px;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:6px"><i class="ti ti-cherry" style="font-size:14px"></i> Cherry on top — extra credit</div>
+    <div class="pattern-grid">`;
+    extraGridStats.forEach(s => {
+      const yesRate = Math.round((s.yesRate ?? 0) * 100);
+      html += `<div class="pattern-item" style="border-color:rgba(168,85,247,0.25);background:rgba(168,85,247,0.05)">
+        <div class="pattern-q">${s.label}</div>
+        <div class="pattern-bar-wrap"><div class="pattern-bar" style="width:${yesRate}%;background:#a855f7"></div></div>
+        <div class="pattern-pct" style="color:#a855f7">${yesRate}% Yes &nbsp;<span style="color:var(--text3);font-weight:400">(${s.answered} reviewed)</span></div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (notes.length) {
+    html += `<div class="panel" style="margin-bottom:20px">
+      <div class="panel-header"><div class="panel-title"><i class="ti ti-notes"></i> Reflection notes</div></div>
+      ${notes.map(n => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${n.name}${n.disp?' · '+n.disp:''}</div>
+        <div style="font-size:13px;color:var(--text2)">${n.note}</div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+/* ---- Follow Up ---- */
+const HOLIDAYS_2026 = [
+  { name: "Father's Day", date: '2026-06-21', emoji: '👔' },
+  { name: '4th of July', date: '2026-07-04', emoji: '🎆' },
+  { name: 'Labor Day', date: '2026-09-07', emoji: '🛠️' },
+  { name: 'Halloween', date: '2026-10-31', emoji: '🎃' },
+  { name: "Veterans Day", date: '2026-11-11', emoji: '🎖️' },
+  { name: 'Thanksgiving', date: '2026-11-26', emoji: '🦃' },
+  { name: 'Christmas', date: '2026-12-25', emoji: '🎄' },
+  { name: "New Year's Eve", date: '2026-12-31', emoji: '🥂' },
+  { name: "New Year's Day", date: '2027-01-01', emoji: '🎉' },
+  { name: "Valentine's Day", date: '2027-02-14', emoji: '❤️' },
+  { name: "Mother's Day", date: '2027-05-09', emoji: '🌸' },
+  { name: "Father's Day", date: '2027-06-20', emoji: '👔' },
+];
+
+let holidayOpen = false;
+let editingLeadIdx = null;
+let editingEventIdx = null;
+
+function daysUntil(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  return Math.round((date - today) / 86400000);
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderHolidayBanner() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = HOLIDAYS_2026.filter(h => daysUntil(h.date) >= 0).slice(0, 6);
+  const next = upcoming[0];
+  if (!next) return;
+  const days = daysUntil(next.date);
+  const label = days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `${days} days`;
+  const isSoon = days <= 14;
+
+  document.getElementById('holiday-banner').innerHTML = `
+    <div class="holiday-banner" style="position:relative">
+      <button class="holiday-toggle" onclick="toggleHolidays(event)">
+        <span style="font-size:14px">${next.emoji}</span>
+        <span style="color:var(--text2)">${next.name}</span>
+        <span style="${isSoon ? 'color:var(--amber);font-weight:600' : ''}">${label}</span>
+        <i class="ti ti-chevron-down" id="holiday-chevron" style="font-size:12px;transition:transform 0.2s"></i>
+      </button>
+      <div class="holiday-dropdown" id="holiday-dropdown" style="display:none;position:absolute;top:36px;left:28px">
+        ${upcoming.map(h => {
+          const d = daysUntil(h.date);
+          const dl = d === 0 ? 'Today!' : d === 1 ? 'Tomorrow' : `${d} days`;
+          return `<div class="holiday-row"><span class="holiday-name">${h.emoji} ${h.name}</span><span class="holiday-days${d <= 14 ? ' soon' : ''}">${formatDate(h.date)} · ${dl}</span></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function toggleHolidays(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('holiday-dropdown');
+  const ch = document.getElementById('holiday-chevron');
+  holidayOpen = !holidayOpen;
+  dd.style.display = holidayOpen ? 'block' : 'none';
+  ch.style.transform = holidayOpen ? 'rotate(180deg)' : '';
+}
+document.addEventListener('click', () => {
+  if (holidayOpen) {
+    holidayOpen = false;
+    const dd = document.getElementById('holiday-dropdown');
+    const ch = document.getElementById('holiday-chevron');
+    if (dd) dd.style.display = 'none';
+    if (ch) ch.style.transform = '';
+  }
+});
+
+function getLeads() { if (!state.leads) state.leads = []; return state.leads; }
+function getEvents() { if (!state.events) state.events = []; return state.events; }
+
+function renderFollowUp() {
+  renderHolidayBanner();
+  renderEvents();
+  renderLeads();
+}
+
+function renderEvents() {
+  const events = getEvents().slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  const el = document.getElementById('fu-events-section');
+  if (!events.length) { el.innerHTML = ''; return; }
+
+  const upcoming = events.filter(e => daysUntil(e.date) >= -1);
+  const past = events.filter(e => daysUntil(e.date) < -1);
+
+  const typeEmoji = { Birthday:'🎂', Anniversary:'💍', 'New baby':'👶', 'Moving in':'🏠', Holiday:'🎄', Other:'📅' };
+
+  const renderEventCards = (evts) => evts.map((ev, i) => {
+    const realIdx = getEvents().indexOf(ev);
+    const d = daysUntil(ev.date);
+    const dLabel = d < 0 ? `${Math.abs(d)}d ago` : d === 0 ? 'Today!' : d === 1 ? 'Tomorrow' : `${d} days`;
+    const dColor = d < 0 ? 'var(--text3)' : d <= 3 ? 'var(--red)' : d <= 14 ? 'var(--amber)' : 'var(--text3)';
+    return `<div class="event-card" onclick="openEventModal(${realIdx})">
+      <div class="event-icon">${typeEmoji[ev.type] || '📅'}</div>
+      <div class="event-info">
+        <div class="event-name">${ev.customerName} — ${ev.type}</div>
+        <div class="event-meta">${formatDate(ev.date)}${ev.notes ? ' · ' + ev.notes : ''}</div>
+      </div>
+      <div class="event-right">
+        ${ev.needsGift ? '<span class="gift-badge">🎁 Gift needed</span>' : ''}
+        <span class="days-badge" style="color:${dColor}">${dLabel}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="panel" style="margin-bottom:20px">
+    <div class="section-head"><h2><i class="ti ti-gift"></i> Important events</h2>
+      <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px" onclick="openEventModal()"><i class="ti ti-plus"></i> Add</button>
+    </div>
+    ${upcoming.length ? renderEventCards(upcoming) : ''}
+    ${past.length ? `<div style="font-size:11px;color:var(--text3);margin:12px 0 8px;text-transform:uppercase;letter-spacing:0.05em">Past</div>${renderEventCards(past)}` : ''}
+  </div>`;
+}
+
+/* ---- Leads filters & view state ---- */
+let fuInterestFilter = 'all';
+let fuUrgencyFilter = 'all';
+let fuView = 'list';
+let fuMap = null;
+
+function setInterestFilter(val, btn) {
+  fuInterestFilter = val;
+  document.querySelectorAll('#fu-interest-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLeads();
+}
+function setUrgencyFilter(val, btn) {
+  fuUrgencyFilter = val;
+  document.querySelectorAll('#fu-urgency-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLeads();
+}
+function setLeadsView(v) {
+  fuView = v;
+  document.getElementById('vbtn-list').classList.toggle('active', v === 'list');
+  document.getElementById('vbtn-map').classList.toggle('active', v === 'map');
+  document.getElementById('vbtn-cal').classList.toggle('active', v === 'cal');
+  document.getElementById('fu-leads-section').style.display = v === 'list' ? '' : 'none';
+  document.getElementById('fu-map-section').style.display = v === 'map' ? '' : 'none';
+  document.getElementById('fu-cal-section').style.display = v === 'cal' ? '' : 'none';
+  if (v === 'map') renderLeadsMap();
+  if (v === 'cal') renderCalendar();
+}
+
+/* ---- Calendar view ---- */
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let calSelectedDate = null;
+
+function renderCalendar() {
+  const el = document.getElementById('fu-cal-section');
+  const leads = applyLeadFilters(getLeads().map((l,i) => ({...l, _idx: i})));
+
+  // Build date → leads map
+  const byDate = {};
+  leads.forEach(l => {
+    if (l.followUpDate) {
+      if (!byDate[l.followUpDate]) byDate[l.followUpDate] = [];
+      byDate[l.followUpDate].push(l);
+    }
+  });
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay  = new Date(calYear, calMonth + 1, 0);
+  const startPad = firstDay.getDay(); // 0=Sun
+
+  let cells = '';
+  // Leading empty cells
+  for (let i = 0; i < startPad; i++) {
+    const d = new Date(calYear, calMonth, i - startPad + 1);
+    const ds = dateStr(d);
+    cells += `<div class="cal-cell other-month">${renderCellInner(d, ds, byDate, today)}</div>`;
+  }
+  // Days of month
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const date = new Date(calYear, calMonth, d);
+    const ds = dateStr(date);
+    const isToday = date.getTime() === today.getTime();
+    const isPast = date < today;
+    const hasLeads = !!byDate[ds];
+    const isSelected = calSelectedDate === ds;
+    let cls = 'cal-cell';
+    if (isToday) cls += ' today';
+    if (isPast && !isToday) cls += ' past';
+    if (hasLeads) cls += ' has-leads';
+    if (isSelected) cls += ' selected';
+    cells += `<div class="${cls}" ${hasLeads ? `onclick="calSelectDate('${ds}')"` : ''}>${renderCellInner(date, ds, byDate, today)}</div>`;
+  }
+  // Trailing cells to complete grid
+  const total = startPad + lastDay.getDate();
+  const trailing = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= trailing; i++) {
+    const date = new Date(calYear, calMonth + 1, i);
+    const ds = dateStr(date);
+    cells += `<div class="cal-cell other-month">${renderCellInner(date, ds, byDate, today)}</div>`;
+  }
+
+  const dayPanel = calSelectedDate && byDate[calSelectedDate] ? renderCalDayPanel(calSelectedDate, byDate[calSelectedDate]) : '';
+
+  el.innerHTML = `
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calNav(-1)"><i class="ti ti-chevron-left"></i></button>
+      <h3>${monthNames[calMonth]} ${calYear}</h3>
+      <button class="cal-nav" onclick="calNav(1)"><i class="ti ti-chevron-right"></i></button>
+    </div>
+    <div class="cal-grid">
+      ${dayLabels.map(d => `<div class="cal-day-label">${d}</div>`).join('')}
+      ${cells}
+    </div>
+    ${dayPanel}
+  `;
+}
+
+function renderCellInner(date, ds, byDate, today) {
+  const d = date.getDate();
+  const dayLeads = byDate[ds] || [];
+  const dots = dayLeads.map(l => {
+    const iv = (l.interest || '').toLowerCase();
+    const cls = iv.includes('hot') ? 'hot' : iv.includes('warm') ? 'warm' : iv.includes('cold') ? 'cold' : 'other';
+    return `<div class="cal-dot ${cls}"></div>`;
+  }).join('');
+  return `<div class="cal-date">${d}</div><div class="cal-dots">${dots}</div>`;
+}
+
+function renderCalDayPanel(ds, dayLeads) {
+  const [y,m,d] = ds.split('-').map(Number);
+  const label = new Date(y, m-1, d).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  const cards = dayLeads.map(l => {
+    const iv = (l.interest || '').toLowerCase();
+    const dotCls = iv.includes('hot') ? 'hot' : iv.includes('warm') ? 'warm' : iv.includes('cold') ? 'cold' : 'other';
+    const bestTime = formatBestTime(l);
+    return `<div class="lead-card" onclick="openLeadModal(${l._idx})" style="margin-bottom:8px">
+      <div>
+        <div class="lead-name">${l.name || 'Unnamed'}</div>
+        <div class="lead-meta">
+          ${l.city ? `<span>${l.city}</span>` : ''}
+          ${l.phone ? `<span><i class="ti ti-phone" style="font-size:11px;vertical-align:-1px"></i> ${l.phone}</span>` : ''}
+        </div>
+        ${bestTime ? `<span class="best-time-pill">⏰ ${bestTime}</span>` : ''}
+        ${l.notes ? `<div class="lead-notes">${l.notes.substring(0,100)}${l.notes.length>100?'…':''}</div>` : ''}
+      </div>
+      <div class="lead-right">
+        ${l.interest ? `<span class="interest-pill">${l.interest}</span>` : ''}
+        ${l.needsGift ? '<span class="gift-badge">🎁 Gift</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="cal-day-panel">
+    <div class="cal-day-panel-header"><i class="ti ti-calendar-event"></i> ${label} — ${dayLeads.length} follow-up${dayLeads.length !== 1 ? 's' : ''}</div>
+    ${cards}
+  </div>`;
+}
+
+function calNav(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  calSelectedDate = null;
+  renderCalendar();
+}
+
+function calSelectDate(ds) {
+  calSelectedDate = calSelectedDate === ds ? null : ds;
+  renderCalendar();
+}
+
+function dateStr(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function applyLeadFilters(leads) {
+  return leads.filter(l => {
+    // interest
+    if (fuInterestFilter !== 'all') {
+      const iv = (l.interest || '').toLowerCase();
+      if (fuInterestFilter === 'hot' && !iv.includes('hot')) return false;
+      if (fuInterestFilter === 'warm' && !iv.includes('warm')) return false;
+      if (fuInterestFilter === 'cold' && !iv.includes('cold')) return false;
+    }
+    // urgency
+    if (fuUrgencyFilter !== 'all') {
+      const d = l.followUpDate ? daysUntil(l.followUpDate) : null;
+      if (fuUrgencyFilter === 'overdue' && (d === null || d >= 0)) return false;
+      if (fuUrgencyFilter === 'week' && (d === null || d < 0 || d > 7)) return false;
+      if (fuUrgencyFilter === 'upcoming' && (d === null || d < 0)) return false;
+    }
+    return true;
+  });
+}
+
+/* ---- Contact log ---- */
+function logContact(idx, note) {
+  const lead = getLeads()[idx];
+  if (!lead) return;
+  if (!lead.contactLog) lead.contactLog = [];
+  lead.contactLog.unshift({ date: new Date().toISOString(), note: note || '' });
+  save();
+  renderFollowUp();
+  if (fuView === 'cal') renderCalendar();
+  toast(`Logged follow-up with ${lead.name}`);
+}
+
+function deleteContactEntry(leadIdx, entryIdx) {
+  const lead = getLeads()[leadIdx];
+  if (!lead || !lead.contactLog) return;
+  lead.contactLog.splice(entryIdx, 1);
+  save();
+  renderContactLog(leadIdx);
+}
+
+function lastContactedLabel(lead) {
+  if (!lead.contactLog || !lead.contactLog.length) return '';
+  const last = new Date(lead.contactLog[0].date);
+  const diffDays = Math.floor((Date.now() - last) / 86400000);
+  if (diffDays === 0) return 'Contacted today';
+  if (diffDays === 1) return 'Contacted yesterday';
+  return `Contacted ${diffDays}d ago`;
+}
+
+function renderContactLog(leadIdx) {
+  const el = document.getElementById('ld-contact-log');
+  if (!el) return;
+  const lead = getLeads()[leadIdx];
+  const log = (lead?.contactLog || []);
+
+  el.innerHTML = `<div class="contact-log">
+    <div class="contact-log-title"><i class="ti ti-history" style="font-size:11px"></i> Contact history</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input class="form-input" id="ld-contact-note" placeholder="Optional note (what was said, outcome...)" style="flex:1;font-size:13px">
+      <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="logContactFromModal(${leadIdx})"><i class="ti ti-phone-check"></i> Log</button>
+    </div>
+    ${log.length ? log.map((entry, i) => {
+      const d = new Date(entry.date);
+      const dateLabel = d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+      const timeLabel = d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+      return `<div class="contact-log-entry">
+        <div class="contact-log-date">${dateLabel}<br><span style="font-weight:400;color:var(--text3)">${timeLabel}</span></div>
+        <div class="contact-log-note">${entry.note || '<span style="color:var(--text3);font-style:italic">No note</span>'}</div>
+        <span class="contact-log-del" onclick="deleteContactEntry(${leadIdx},${i})"><i class="ti ti-x"></i></span>
+      </div>`;
+    }).join('') : `<div style="font-size:12px;color:var(--text3);padding:8px 0">No contact logged yet.</div>`}
+  </div>`;
+}
+
+function logContactFromModal(leadIdx) {
+  const note = (document.getElementById('ld-contact-note')?.value || '').trim();
+  logContact(leadIdx, note);
+  renderContactLog(leadIdx);
+  const el = document.getElementById('ld-contact-note');
+  if (el) el.value = '';
+}
+
+function formatBestTime(lead) {
+  const days = (lead.bestDays || []).join(', ');
+  const from = lead.bestTimeFrom || '';
+  const to = lead.bestTimeTo || '';
+  if (!days && !from) return '';
+  let parts = [];
+  if (days) parts.push(days);
+  if (from && to) parts.push(fmtTime(from) + ' – ' + fmtTime(to));
+  else if (from) parts.push('from ' + fmtTime(from));
+  return parts.join(' · ');
+}
+
+function fmtTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}${m ? ':' + String(m).padStart(2,'0') : ''} ${ampm}`;
+}
+
+function renderLeads() {
+  const allLeads = getLeads();
+  const el = document.getElementById('fu-leads-section');
+
+  const leads = applyLeadFilters(allLeads.map((l,i) => ({...l, _idx: i})));
+
+  if (!allLeads.length) {
+    el.innerHTML = `<div class="panel"><div class="empty"><i class="ti ti-users-off"></i><p>No leads yet. Add your first follow-up.</p></div></div>`;
+    return;
+  }
+  if (!leads.length) {
+    el.innerHTML = `<div class="panel"><div class="empty"><i class="ti ti-filter-off"></i><p>No leads match these filters.</p></div></div>`;
+    return;
+  }
+
+  // Sort: overdue first, then by follow-up date, then no date last
+  const sorted = leads.slice().sort((a,b) => {
+    const da = a.followUpDate ? daysUntil(a.followUpDate) : 9999;
+    const db = b.followUpDate ? daysUntil(b.followUpDate) : 9999;
+    return da - db;
+  });
+
+  // Group by city
+  const cities = {};
+  sorted.forEach(l => {
+    const city = (l.city || 'Other').trim();
+    if (!cities[city]) cities[city] = [];
+    cities[city].push(l);
+  });
+
+  const totalShown = leads.length;
+  const totalAll = allLeads.length;
+  const countLabel = totalShown < totalAll ? `${totalShown} of ${totalAll}` : `${totalAll}`;
+
+  el.innerHTML = `<div class="section-head"><h2><i class="ti ti-users"></i> Leads by city</h2><span style="font-size:12px;color:var(--text3)">${countLabel} leads</span></div>` +
+    Object.entries(cities).map(([city, cityLeads]) => {
+      const cards = cityLeads.map(l => {
+        const d = l.followUpDate ? daysUntil(l.followUpDate) : null;
+        let fuTag = '', cardCls = '';
+        if (d !== null) {
+          if (d < 0)        { fuTag = `<span class="followup-tag overdue">Overdue ${Math.abs(d)}d</span>`; cardCls = 'overdue'; }
+          else if (d === 0) { fuTag = `<span class="followup-tag today">Follow up today</span>`; cardCls = 'upcoming'; }
+          else if (d <= 7)  { fuTag = `<span class="followup-tag soon">In ${d} day${d!==1?'s':''}</span>`; cardCls = 'upcoming'; }
+          else              { fuTag = `<span class="followup-tag later">${formatDate(l.followUpDate)}</span>`; }
+        }
+        if (l.needsGift) cardCls = 'needs-gift';
+        const bestTime = formatBestTime(l);
+
+        const lastContact = lastContactedLabel(l);
+        return `<div class="lead-card ${cardCls}" onclick="openLeadModal(${l._idx})">
+          <div>
+            <div class="lead-name">${l.name || 'Unnamed'}</div>
+            <div class="lead-meta">
+              ${l.phone ? `<span><i class="ti ti-phone" style="font-size:11px;vertical-align:-1px"></i> ${l.phone}</span>` : ''}
+              ${l.address ? `<span>${l.address}</span>` : ''}
+            </div>
+            ${bestTime ? `<span class="best-time-pill">⏰ ${bestTime}</span>` : ''}
+            ${lastContact ? `<span class="last-contact-pill">✓ ${lastContact}</span>` : ''}
+            ${l.notes ? `<div class="lead-notes">${l.notes.substring(0,120)}${l.notes.length>120?'…':''}</div>` : ''}
+            <div style="margin-top:8px" onclick="event.stopPropagation()">
+              <button class="fu-btn" onclick="logContact(${l._idx})"><i class="ti ti-phone-check"></i> Followed up</button>
+            </div>
+          </div>
+          <div class="lead-right">
+            ${l.interest ? `<span class="interest-pill">${l.interest}</span>` : ''}
+            ${fuTag}
+            ${l.needsGift ? '<span class="gift-badge">🎁 Gift</span>' : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+      return `<div class="city-group">
+        <div class="city-header">
+          <span class="city-label">${city}</span>
+          <span class="city-count">${cityLeads.length}</span>
+        </div>
+        ${cards}
+      </div>`;
+    }).join('');
+
+  // keep map in sync if visible
+  if (fuView === 'map') renderLeadsMap();
+}
+
+/* ---- Map view ---- */
+const interestPinColor = { hot: '#ef4444', warm: '#f59e0b', cold: '#60a5fa', closed: '#22c55e', '': '#7c6af7' };
+
+function getPinColor(interest) {
+  const iv = (interest || '').toLowerCase();
+  if (iv.includes('hot')) return interestPinColor.hot;
+  if (iv.includes('warm')) return interestPinColor.warm;
+  if (iv.includes('cold')) return interestPinColor.cold;
+  if (iv.includes('closed')) return interestPinColor.closed;
+  return interestPinColor[''];
+}
+
+function makePin(color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.8);box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>`,
+    iconSize: [14,14], iconAnchor: [7,7], popupAnchor: [0,-10]
+  });
+}
+
+async function geocode(address, city) {
+  const q = encodeURIComponent([address, city].filter(Boolean).join(', ') + ', USA');
+  const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+    headers: { 'Accept-Language': 'en', 'User-Agent': 'D2DTracker/1.0' }
+  });
+  const data = await r.json();
+  if (data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  return null;
+}
+
+async function renderLeadsMap() {
+  const leads = applyLeadFilters(getLeads().map((l,i) => ({...l, _idx: i})));
+
+  if (!fuMap) {
+    fuMap = L.map('fu-map', { zoomControl: true }).setView([34.0, -117.7], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 19
+    }).addTo(fuMap);
+  } else {
+    fuMap.eachLayer(l => { if (l instanceof L.Marker) fuMap.removeLayer(l); });
+  }
+
+  const bounds = [];
+  for (const l of leads) {
+    // use cached coords or geocode
+    let lat = l.lat, lng = l.lng;
+    if ((!lat || !lng) && (l.address || l.city)) {
+      const coords = await geocode(l.address, l.city);
+      if (coords) {
+        lat = coords.lat; lng = coords.lng;
+        getLeads()[l._idx].lat = lat;
+        getLeads()[l._idx].lng = lng;
+        save();
+      }
+    }
+    if (!lat || !lng) continue;
+
+    const color = getPinColor(l.interest);
+    const d = l.followUpDate ? daysUntil(l.followUpDate) : null;
+    let urgencyStr = '';
+    if (d !== null) {
+      if (d < 0) urgencyStr = `<span style="color:#ef4444;font-size:11px;font-weight:600">Overdue ${Math.abs(d)}d</span>`;
+      else if (d === 0) urgencyStr = `<span style="color:#f59e0b;font-size:11px;font-weight:600">Follow up today</span>`;
+      else if (d <= 7) urgencyStr = `<span style="color:#60a5fa;font-size:11px;font-weight:600">In ${d} day${d!==1?'s':''}</span>`;
+    }
+    const bestTime = formatBestTime(l);
+
+    const marker = L.marker([lat, lng], { icon: makePin(color) }).addTo(fuMap);
+    marker.bindPopup(`
+      <div class="map-popup-name">${l.name || 'Unnamed'}</div>
+      <div class="map-popup-meta">${l.interest || ''}${l.city ? ' · ' + l.city : ''}${l.phone ? '<br>📞 ' + l.phone : ''}</div>
+      ${urgencyStr ? `<div style="margin-bottom:4px">${urgencyStr}</div>` : ''}
+      ${bestTime ? `<div style="font-size:11px;color:#888;margin-bottom:6px">⏰ ${bestTime}</div>` : ''}
+      <button class="map-popup-btn" onclick="fuMap.closePopup();openLeadModal(${l._idx})">✏️ Edit lead</button>
+    `, { maxWidth: 220 });
+    bounds.push([lat, lng]);
+  }
+
+  if (bounds.length) fuMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+  setTimeout(() => fuMap && fuMap.invalidateSize(), 100);
+}
+
+/* Lead modal */
+function openLeadModal(idx) {
+  editingLeadIdx = idx !== undefined ? idx : null;
+  const lead = editingLeadIdx !== null ? getLeads()[editingLeadIdx] : null;
+  document.getElementById('lead-modal-title').textContent = lead ? 'Edit lead' : 'Add lead';
+  document.getElementById('ld-name').value = lead?.name || '';
+  document.getElementById('ld-city').value = lead?.city || '';
+  document.getElementById('ld-phone').value = lead?.phone || '';
+  document.getElementById('ld-address').value = lead?.address || '';
+  document.getElementById('ld-interest').value = lead?.interest || '';
+  document.getElementById('ld-followup').value = lead?.followUpDate || '';
+  document.getElementById('ld-gift').checked = lead?.needsGift || false;
+  document.getElementById('ld-notes').value = lead?.notes || '';
+  // best days
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    document.getElementById('ld-day-' + d.toLowerCase()).checked = (lead?.bestDays || []).includes(d);
+  });
+  document.getElementById('ld-time-from').value = lead?.bestTimeFrom || '';
+  document.getElementById('ld-time-to').value = lead?.bestTimeTo || '';
+  document.getElementById('ld-delete-btn').style.display = lead ? 'inline-flex' : 'none';
+  document.getElementById('ld-contact-log').innerHTML = '';
+  document.getElementById('lead-modal').style.display = 'flex';
+  if (editingLeadIdx !== null) setTimeout(() => renderContactLog(editingLeadIdx), 0);
+}
+function closeLeadModal() { document.getElementById('lead-modal').style.display = 'none'; }
+function saveLead() {
+  const name = document.getElementById('ld-name').value.trim();
+  if (!name) { alert('Please enter a name.'); return; }
+  const existing = editingLeadIdx !== null ? getLeads()[editingLeadIdx] : {};
+  const newAddr = document.getElementById('ld-address').value.trim();
+  const newCity = document.getElementById('ld-city').value.trim();
+  // clear cached coords if address changed
+  const addrChanged = newAddr !== (existing.address || '') || newCity !== (existing.city || '');
+  const bestDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].filter(d => document.getElementById('ld-day-' + d.toLowerCase()).checked);
+  const lead = {
+    name,
+    city: newCity,
+    phone: document.getElementById('ld-phone').value.trim(),
+    address: newAddr,
+    interest: document.getElementById('ld-interest').value,
+    followUpDate: document.getElementById('ld-followup').value,
+    needsGift: document.getElementById('ld-gift').checked,
+    notes: document.getElementById('ld-notes').value.trim(),
+    bestDays,
+    bestTimeFrom: document.getElementById('ld-time-from').value,
+    bestTimeTo: document.getElementById('ld-time-to').value,
+    contactLog: existing.contactLog || [],
+    createdAt: existing.createdAt || new Date().toISOString().substring(0,10),
+    lat: addrChanged ? undefined : existing.lat,
+    lng: addrChanged ? undefined : existing.lng,
+  };
+  if (editingLeadIdx !== null) getLeads()[editingLeadIdx] = lead;
+  else getLeads().push(lead);
+  save(); closeLeadModal(); renderFollowUp(); toast(editingLeadIdx !== null ? 'Lead updated' : 'Lead added');
+}
+function deleteLead() {
+  if (!confirm('Delete this lead?')) return;
+  getLeads().splice(editingLeadIdx, 1);
+  save(); closeLeadModal(); renderFollowUp(); toast('Lead deleted');
+}
+
+/* Event modal */
+function openEventModal(idx) {
+  editingEventIdx = idx !== undefined ? idx : null;
+  const ev = editingEventIdx !== null ? getEvents()[editingEventIdx] : null;
+  document.getElementById('event-modal-title').textContent = ev ? 'Edit event' : 'Add important event';
+  document.getElementById('ev-name').value = ev?.customerName || '';
+  document.getElementById('ev-type').value = ev?.type || 'Birthday';
+  document.getElementById('ev-date').value = ev?.date || '';
+  document.getElementById('ev-gift').checked = ev?.needsGift || false;
+  document.getElementById('ev-notes').value = ev?.notes || '';
+  document.getElementById('ev-delete-btn').style.display = ev ? 'inline-flex' : 'none';
+  document.getElementById('event-modal').style.display = 'flex';
+}
+function closeEventModal() { document.getElementById('event-modal').style.display = 'none'; }
+function saveEvent() {
+  const name = document.getElementById('ev-name').value.trim();
+  if (!name) { alert('Please enter a customer name.'); return; }
+  const ev = {
+    customerName: name,
+    type: document.getElementById('ev-type').value,
+    date: document.getElementById('ev-date').value,
+    needsGift: document.getElementById('ev-gift').checked,
+    notes: document.getElementById('ev-notes').value.trim(),
+  };
+  if (editingEventIdx !== null) getEvents()[editingEventIdx] = ev;
+  else getEvents().push(ev);
+  save(); closeEventModal(); renderFollowUp(); toast(editingEventIdx !== null ? 'Event updated' : 'Event added');
+}
+function deleteEvent() {
+  if (!confirm('Delete this event?')) return;
+  getEvents().splice(editingEventIdx, 1);
+  save(); closeEventModal(); renderFollowUp(); toast('Event deleted');
+}
+
+/* ---- Import Photo ---- */
+let ipFiles = [];
+
+function openImportPhotoModal() {
+  ipFiles = [];
+  document.getElementById('ip-previews').innerHTML = '';
+  document.getElementById('ip-status').style.display = 'none';
+  document.getElementById('ip-results').style.display = 'none';
+  document.getElementById('ip-submit-btn').disabled = false;
+  document.getElementById('ip-submit-btn').innerHTML = '<i class="ti ti-sparkles"></i> Extract leads';
+  const saved = localStorage.getItem('anthropic_key') || '';
+  document.getElementById('ip-apikey').value = saved;
+  document.getElementById('import-photo-modal').style.display = 'flex';
+}
+function closeImportPhotoModal() { document.getElementById('import-photo-modal').style.display = 'none'; }
+
+function handleIPDrop(e) {
+  e.preventDefault();
+  document.getElementById('ip-drop-zone').style.borderColor = 'var(--border)';
+  handleIPFiles(e.dataTransfer.files);
+}
+
+function handleIPFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith('image/')) continue;
+    ipFiles.push(f);
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const div = document.createElement('div');
+      div.style.cssText = 'position:relative;width:72px;height:72px';
+      div.innerHTML = `<img src="${ev.target.result}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+        <button onclick="removeIPFile(${ipFiles.length-1},this.parentNode)" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center">✕</button>`;
+      document.getElementById('ip-previews').appendChild(div);
+    };
+    reader.readAsDataURL(f);
+  }
+}
+
+function removeIPFile(idx, el) {
+  ipFiles.splice(idx, 1);
+  el.remove();
+}
+
+async function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function runImportPhoto() {
+  const key = document.getElementById('ip-apikey').value.trim();
+  if (!key) { alert('Please enter your Anthropic API key.'); return; }
+  if (ipFiles.length === 0) { alert('Please add at least one screenshot.'); return; }
+
+  localStorage.setItem('anthropic_key', key);
+
+  const btn = document.getElementById('ip-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Reading...';
+
+  const status = document.getElementById('ip-status');
+  status.style.display = 'block';
+  status.style.background = 'var(--bg3)';
+  status.style.color = 'var(--text2)';
+  status.textContent = 'Sending to Claude AI…';
+
+  const imageContents = await Promise.all(ipFiles.map(async f => ({
+    type: 'image',
+    source: { type: 'base64', media_type: f.type, data: await fileToBase64(f) }
+  })));
+
+  const prompt = `You are reading a Customer Follow Up Sheets table. Extract every lead row and return ONLY a JSON array (no markdown, no explanation) like:
+[{"name":"Full Name","city":"City","phone":"Phone","address":"Address","interest":"Hot|Warm|Cold","followUpDate":"YYYY-MM-DD or empty string","needsGift":false,"notes":"full notes text"}]
+
+Rules:
+- interest: use "Hot" if notes sound very promising/laydown/100% buyer, "Warm" for interested but hesitant, "Cold" for unlikely
+- followUpDate: parse any date mentioned in notes (e.g. "6/17", "August 1", "5/25") and convert to YYYY-MM-DD format using year 2026. If no specific date, use empty string ""
+- needsGift: true if notes mention bringing a gift, dropping something off, or gift needed
+- Include ALL rows even if some fields are missing
+- Do not include header rows`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: [...imageContents, { type: 'text', text: prompt }] }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error?.message || resp.statusText);
+    }
+
+    const data = await resp.json();
+    const text = data.content[0].text.trim();
+    let leads;
+    try {
+      // strip markdown code fences if present
+      const clean = text.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'');
+      leads = JSON.parse(clean);
+    } catch(e) {
+      throw new Error('Could not parse AI response. Try again.');
+    }
+
+    if (!Array.isArray(leads) || leads.length === 0) throw new Error('No leads found in the image.');
+
+    // Add to state, skip duplicates by name+phone
+    const existing = new Set(state.leads.map(l => (l.name+l.phone).toLowerCase().replace(/\s/g,'')));
+    let added = 0;
+    for (const l of leads) {
+      const key2 = (l.name+l.phone).toLowerCase().replace(/\s/g,'');
+      if (!existing.has(key2)) {
+        state.leads.push({ name: l.name||'', city: l.city||'', phone: l.phone||'', address: l.address||'', interest: l.interest||'', followUpDate: l.followUpDate||'', needsGift: !!l.needsGift, notes: l.notes||'', createdAt: new Date().toISOString() });
+        existing.add(key2);
+        added++;
+      }
+    }
+    save();
+    renderFollowUp();
+
+    status.style.background = 'rgba(34,197,94,0.12)';
+    status.style.color = '#4ade80';
+    status.textContent = `✓ Found ${leads.length} leads — added ${added} new (${leads.length - added} already existed)`;
+    btn.innerHTML = '<i class="ti ti-check"></i> Done';
+    setTimeout(() => closeImportPhotoModal(), 2000);
+  } catch(e) {
+    status.style.background = 'var(--red-bg)';
+    status.style.color = 'var(--red)';
+    status.textContent = '✕ ' + e.message;
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Try again';
+  }
+}
+
+/* ---- Firebase Sync ---- */
+let syncDb = null;
+let syncUser = null;
+let syncUnsubscribe = null;
+let syncEnabled = false;
+let syncPushTimeout = null;
+
+function getSyncConfig() {
+  try { return JSON.parse(localStorage.getItem('sync_firebase_config') || 'null'); } catch(e) { return null; }
+}
+
+function initSync() {
+  const config = getSyncConfig();
+  if (!config || !window.firebase) return;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    syncDb = firebase.firestore();
+    firebase.auth().onAuthStateChanged(user => {
+      syncUser = user;
+      syncEnabled = !!user;
+      updateSyncUI();
+      if (user) startRealtimeSync();
+      else if (syncUnsubscribe) { syncUnsubscribe(); syncUnsubscribe = null; }
+    });
+  } catch(e) { console.error('Firebase init error', e); }
+}
+
+function startRealtimeSync() {
+  if (!syncDb || !syncUser) return;
+  if (syncUnsubscribe) syncUnsubscribe();
+  const docRef = syncDb.collection('d2d_trackers').doc(syncUser.uid);
+  // First load from cloud
+  docRef.get().then(doc => {
+    if (doc.exists && doc.data().state) {
+      const remote = JSON.parse(doc.data().state);
+      state = remote;
+      localStorage.setItem('d2d_v3', doc.data().state);
+      renderAll();
+      toast('Data loaded from cloud ☁️');
+    } else {
+      // Push local data up first time
+      pushToCloud();
+    }
+  }).catch(e => console.error('Sync load error', e));
+
+  // Real-time listener for changes from other devices
+  syncUnsubscribe = docRef.onSnapshot(doc => {
+    if (!doc.exists || !doc.data().state) return;
+    const remoteStr = doc.data().state;
+    const localStr = JSON.stringify(state);
+    if (remoteStr !== localStr) {
+      state = JSON.parse(remoteStr);
+      localStorage.setItem('d2d_v3', remoteStr);
+      renderAll();
+    }
+  }, e => console.error('Sync listener error', e));
+}
+
+function pushToCloud() {
+  if (!syncDb || !syncUser) return;
+  clearTimeout(syncPushTimeout);
+  syncPushTimeout = setTimeout(() => {
+    syncDb.collection('d2d_trackers').doc(syncUser.uid).set({
+      state: JSON.stringify(state),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(e => console.error('Sync push error', e));
+  }, 800); // debounce rapid saves
+}
+
+
+function updateSyncUI() {
+  const icon = document.getElementById('sync-icon');
+  const label = document.getElementById('sync-label');
+  const micon = document.getElementById('sync-icon-mobile');
+  const mlabel = document.getElementById('sync-label-mobile');
+  const btn = document.getElementById('sidebar-sync-btn');
+  const mbtn = document.getElementById('mnav-sync');
+
+  if (syncEnabled && syncUser) {
+    if (icon) icon.className = 'ti ti-cloud-check';
+    if (label) label.textContent = 'Synced';
+    if (micon) micon.className = 'ti ti-cloud-check';
+    if (mlabel) mlabel.textContent = 'Synced';
+    if (btn) btn.classList.add('synced');
+    if (mbtn) mbtn.style.color = '#4ade80';
+  } else if (getSyncConfig()) {
+    if (icon) icon.className = 'ti ti-cloud-off';
+    if (label) label.textContent = 'Sign in';
+    if (micon) micon.className = 'ti ti-cloud-off';
+    if (mlabel) mlabel.textContent = 'Sign in';
+    if (btn) btn.classList.remove('synced');
+  } else {
+    if (icon) icon.className = 'ti ti-cloud';
+    if (label) label.textContent = 'Enable sync';
+    if (micon) micon.className = 'ti ti-cloud';
+    if (mlabel) mlabel.textContent = 'Sync';
+  }
+}
+
+function openSyncModal() {
+  document.getElementById('sync-modal').style.display = 'flex';
+  renderSyncModal();
+}
+function closeSyncModal() { document.getElementById('sync-modal').style.display = 'none'; }
+
+function renderSyncModal() {
+  const body = document.getElementById('sync-modal-body');
+  const config = getSyncConfig();
+
+  if (syncEnabled && syncUser) {
+    // Logged in view
+    body.innerHTML = `
+      <div class="sync-user-info">
+        <span class="sync-status-dot green"></span>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#4ade80">Syncing across devices</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${syncUser.email}</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Your data syncs in real-time across all devices logged in with this account. Open the HTML file on any device, tap Sync, and sign in with the same email.</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="syncSignOut()"><i class="ti ti-logout"></i> Sign out</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="confirmClearSyncConfig()"><i class="ti ti-settings-off"></i> Remove setup</button>
+      </div>`;
+    return;
+  }
+
+  if (config) {
+    // Has config, needs to sign in
+    body.innerHTML = `
+      <div style="margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:10px;font-size:13px;color:var(--text2)">
+        Firebase is configured. Sign in to start syncing.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="sync-email" placeholder="you@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="sync-password" placeholder="••••••••">
+      </div>
+      <div id="sync-auth-error" style="display:none;color:var(--red);font-size:12px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn-primary" style="flex:1" onclick="syncSignIn()"><i class="ti ti-login"></i> Sign in</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="syncSignUp()"><i class="ti ti-user-plus"></i> Create account</button>
+      </div>
+      <button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="localStorage.removeItem('sync_firebase_config');renderSyncModal()">← Re-enter Firebase config</button>`;
+    return;
+  }
+
+  // Setup wizard
+  body.innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Sync uses a free Firebase project — no monthly cost for personal use. Follow these steps once:</div>
+
+    <div class="sync-step">
+      <div class="sync-step-title"><span class="sync-step-num">1</span> Create a free Firebase project</div>
+      <div class="sync-step-body">
+        Go to <strong style="color:var(--accent)">console.firebase.google.com</strong> → <em>Add project</em> → name it anything (e.g. "D2D Tracker") → continue until done.
+      </div>
+    </div>
+
+    <div class="sync-step">
+      <div class="sync-step-title"><span class="sync-step-num">2</span> Add a Web App &amp; copy config</div>
+      <div class="sync-step-body">
+        In your project → click <code>&lt;/&gt;</code> (Web) → register app → copy the <code>firebaseConfig</code> object and paste it below.
+      </div>
+    </div>
+
+    <div class="sync-step">
+      <div class="sync-step-title"><span class="sync-step-num">3</span> Enable Firestore &amp; Auth</div>
+      <div class="sync-step-body">
+        • <strong>Firestore Database</strong> → Create database → Start in <em>test mode</em><br>
+        • <strong>Authentication</strong> → Get started → Email/Password → Enable
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:4px">
+      <label class="form-label">Paste your firebaseConfig here</label>
+      <textarea class="notes-input" id="sync-config-input" style="min-height:120px;font-family:monospace;font-size:11px" placeholder='const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  ...
+};'></textarea>
+    </div>
+    <div id="sync-config-error" style="display:none;color:var(--red);font-size:12px;margin-bottom:8px"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="saveSyncConfig()"><i class="ti ti-arrow-right"></i> Continue</button>`;
+}
+
+function saveSyncConfig() {
+  const raw = document.getElementById('sync-config-input').value.trim();
+  const errEl = document.getElementById('sync-config-error');
+  // Extract JSON object from pasted text
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) { errEl.style.display='block'; errEl.textContent='Could not find a config object. Make sure you pasted the full firebaseConfig block.'; return; }
+  let config;
+  try { config = (new Function('return (' + match[0] + ')'))(); } catch(e) { errEl.style.display='block'; errEl.textContent='Could not parse config: ' + e.message; return; }
+  if (!config.apiKey || !config.projectId) { errEl.style.display='block'; errEl.textContent='Missing apiKey or projectId. Please paste the full config.'; return; }
+  localStorage.setItem('sync_firebase_config', JSON.stringify(config));
+  // Init Firebase now
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    syncDb = firebase.firestore();
+    firebase.auth().onAuthStateChanged(user => { syncUser = user; syncEnabled = !!user; updateSyncUI(); if (user) startRealtimeSync(); });
+  } catch(e) {}
+  renderSyncModal();
+}
+
+async function syncSignIn() {
+  const email = document.getElementById('sync-email').value.trim();
+  const pass = document.getElementById('sync-password').value;
+  const errEl = document.getElementById('sync-auth-error');
+  errEl.style.display = 'none';
+  try {
+    await firebase.auth().signInWithEmailAndPassword(email, pass);
+    closeSyncModal();
+    toast('Signed in — syncing ☁️');
+  } catch(e) { errEl.style.display='block'; errEl.textContent = e.message; }
+}
+
+async function syncSignUp() {
+  const email = document.getElementById('sync-email').value.trim();
+  const pass = document.getElementById('sync-password').value;
+  const errEl = document.getElementById('sync-auth-error');
+  errEl.style.display = 'none';
+  if (pass.length < 6) { errEl.style.display='block'; errEl.textContent='Password must be at least 6 characters.'; return; }
+  try {
+    await firebase.auth().createUserWithEmailAndPassword(email, pass);
+    closeSyncModal();
+    toast('Account created — syncing ☁️');
+  } catch(e) { errEl.style.display='block'; errEl.textContent = e.message; }
+}
+
+async function syncSignOut() {
+  await firebase.auth().signOut();
+  if (syncUnsubscribe) { syncUnsubscribe(); syncUnsubscribe = null; }
+  syncEnabled = false; syncUser = null;
+  updateSyncUI();
+  closeSyncModal();
+  toast('Signed out');
+}
+
+function confirmClearSyncConfig() {
+  if (!confirm('Remove Firebase setup? Your local data stays, but syncing will stop.')) return;
+  localStorage.removeItem('sync_firebase_config');
+  syncSignOut();
+  renderSyncModal();
+}
+
+/* ---- Init ---- */
+load();
+initMonthPicker();
+renderAll();
+initSync();
+updateSyncUI();
+</script>
+</body>
+</html>
