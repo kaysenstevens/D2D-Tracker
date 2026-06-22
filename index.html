@@ -659,10 +659,13 @@
             <button class="filter-btn" onclick="setUrgencyFilter('week',this)">This week</button>
             <button class="filter-btn" onclick="setUrgencyFilter('upcoming',this)">Upcoming</button>
           </div>
-          <div class="view-toggle">
-            <button class="view-btn active" id="vbtn-list" onclick="setLeadsView('list')"><i class="ti ti-list"></i></button>
-            <button class="view-btn" id="vbtn-map" onclick="setLeadsView('map')"><i class="ti ti-map-2"></i></button>
-            <button class="view-btn" id="vbtn-cal" onclick="setLeadsView('cal')"><i class="ti ti-calendar-month"></i></button>
+          <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+            <button class="view-btn" onclick="openFieldPrefs()" title="Customize fields" style="border:1px solid var(--border);border-radius:8px;padding:5px 10px"><i class="ti ti-adjustments-horizontal"></i></button>
+            <div class="view-toggle" style="margin-left:0">
+              <button class="view-btn active" id="vbtn-list" onclick="setLeadsView('list')"><i class="ti ti-list"></i></button>
+              <button class="view-btn" id="vbtn-map" onclick="setLeadsView('map')"><i class="ti ti-map-2"></i></button>
+              <button class="view-btn" id="vbtn-cal" onclick="setLeadsView('cal')"><i class="ti ti-calendar-month"></i></button>
+            </div>
           </div>
         </div>
         <div id="fu-leads-section"></div>
