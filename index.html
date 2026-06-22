@@ -2121,19 +2121,20 @@ function renderPatterns(appts) {
     html += '</div>';
   }
 
-  // Reflection notes — collapsible
-  if (notes.length) {
-    html += `<div class="pattern-collapse-header" onclick="togglePatternSection('notes',this)" style="margin-top:6px">
-      <span style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Reflection notes</span>
-      <i class="ti ${patternNotesOpen ? 'ti-chevron-up' : 'ti-chevron-down'}" style="font-size:14px;color:var(--text3)"></i>
-    </div>
-    <div id="pattern-notes-body" style="display:${patternNotesOpen ? 'block' : 'none'};margin-bottom:20px">
-      ${notes.map(n => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${n.name}${n.disp?' · '+n.disp:''}</div>
-        <div style="font-size:13px;color:var(--text2)">${n.note}</div>
-      </div>`).join('')}
-    </div>`;
-  }
+  // Reflection notes — always visible, collapsible
+  html += `<div class="pattern-collapse-header" onclick="togglePatternSection('notes',this)" style="margin-top:6px">
+    <span style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Reflection notes</span>
+    <i class="ti ${patternNotesOpen ? 'ti-chevron-up' : 'ti-chevron-down'}" style="font-size:14px;color:var(--text3)"></i>
+  </div>
+  <div id="pattern-notes-body" style="display:${patternNotesOpen ? 'block' : 'none'};margin-bottom:20px">
+    ${notes.length
+      ? notes.map(n => `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${n.name}${n.disp?' · '+n.disp:''}</div>
+          <div style="font-size:13px;color:var(--text2)">${n.note}</div>
+        </div>`).join('')
+      : `<div style="padding:12px 0;font-size:13px;color:var(--text3)">No reflection notes yet — fill in the "What would you change?" field on each appointment to see notes here.</div>`
+    }
+  </div>`;
 
   el.innerHTML = html;
 }
