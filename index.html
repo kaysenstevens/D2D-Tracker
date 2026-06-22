@@ -306,10 +306,43 @@
   .holiday-days { color: var(--text3); font-size: 11px; }
   .holiday-days.soon { color: var(--amber); font-weight: 600; }
 
-  .city-group { margin-bottom: 24px; }
-  .city-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .city-label { font-size: 13px; font-weight: 600; color: var(--text); }
-  .city-count { font-size: 11px; color: var(--text3); background: var(--bg3); border-radius: 20px; padding: 2px 8px; }
+  .city-group { margin-bottom: 12px; }
+  .city-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg3); border-radius: 10px; cursor: pointer; user-select: none; transition: background 0.15s; }
+  .city-header:hover { background: var(--border); }
+  .city-label { font-size: 12px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; flex: 1; }
+  .city-count { font-size: 11px; color: var(--text3); background: var(--surface); border-radius: 20px; padding: 2px 8px; border: 1px solid var(--border); }
+  .city-chevron { font-size: 13px; color: var(--text3); transition: transform 0.2s; }
+  .city-chevron.collapsed { transform: rotate(-90deg); }
+  .city-cards { margin-top: 6px; margin-bottom: 6px; }
+  .city-cards.hidden { display: none; }
+
+  /* Lead card — clean compact layout */
+  .lead-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 13px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s; }
+  .lead-card:hover { border-color: var(--border2); }
+  .lead-card.needs-gift { border-left: 3px solid var(--purple); }
+  .lead-card.overdue { border-left: 3px solid var(--red); }
+  .lead-card.upcoming { border-left: 3px solid var(--amber); }
+  .lead-card-top { display: flex; align-items: center; gap: 8px; }
+  .lead-name { font-size: 14px; font-weight: 600; flex: 1; }
+  .lead-card-pills { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; margin-top: 5px; }
+  .lead-meta { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .lead-notes { font-size: 12px; color: var(--text2); line-height: 1.5; margin-top: 5px; }
+  .lead-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+
+  /* Field prefs sheet */
+  .field-prefs-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; padding: 20px 20px 36px; z-index: 300; transform: translateY(100%); transition: transform 0.25s ease; max-height: 70vh; overflow-y: auto; }
+  .field-prefs-sheet.open { transform: translateY(0); }
+  .field-prefs-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 299; display: none; }
+  .field-prefs-backdrop.open { display: block; }
+  .field-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .field-toggle-row:last-child { border-bottom: none; }
+  .field-toggle-label { font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 10px; }
+  .toggle-switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--bg3); border-radius: 24px; cursor: pointer; transition: 0.2s; border: 1px solid var(--border); }
+  .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--text3); border-radius: 50%; transition: 0.2s; }
+  .toggle-switch input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+  .toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); background: #fff; }
 
   .lead-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto; gap: 12px; cursor: pointer; transition: border-color 0.15s; }
   .lead-card:hover { border-color: var(--border2); }
