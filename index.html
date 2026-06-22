@@ -2067,18 +2067,19 @@ function renderPatterns(appts) {
 
   let html = '';
 
-  if (insights.length) {
-    html += `<div class="pattern-collapse-header" onclick="togglePatternSection('insights',this)">
-      <span style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Pattern analysis</span>
-      <i class="ti ${patternInsightsOpen ? 'ti-chevron-up' : 'ti-chevron-down'}" style="font-size:14px;color:var(--text3)"></i>
+  html += `<div class="pattern-collapse-header" onclick="togglePatternSection('insights',this)">
+    <span style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Pattern analysis</span>
+    <i class="ti ${patternInsightsOpen ? 'ti-chevron-up' : 'ti-chevron-down'}" style="font-size:14px;color:var(--text3)"></i>
+  </div>
+  <div id="pattern-insights-body" style="display:${patternInsightsOpen ? 'block' : 'none'}">
+    <div class="insight-box" style="margin-top:10px">
+      <h3><i class="ti ti-bulb" style="color:var(--amber)"></i> ${reviewed.length} appointment${reviewed.length!==1?'s':''} reviewed</h3>
+      ${insights.length
+        ? insights.map(ins => `<div class="insight-item"><i class="ti ${ins.icon}" style="color:${ins.color}"></i><span>${ins.text}</span></div>`).join('')
+        : `<div class="insight-item"><i class="ti ti-circle-check" style="color:var(--green)"></i><span>You're looking strong across the board — no major weak spots this month. Keep doing what you're doing and keep logging your appointments to track any shifts.</span></div>`
+      }
     </div>
-    <div id="pattern-insights-body" style="display:${patternInsightsOpen ? 'block' : 'none'}">
-      <div class="insight-box" style="margin-top:10px">
-        <h3><i class="ti ti-bulb" style="color:var(--amber)"></i> ${reviewed.length} appointment${reviewed.length!==1?'s':''} reviewed</h3>
-        ${insights.map(ins => `<div class="insight-item"><i class="ti ${ins.icon}" style="color:${ins.color}"></i><span>${ins.text}</span></div>`).join('')}
-      </div>
-    </div>`;
-  }
+  </div>`;
 
   // Collapsible core question breakdown — sorted worst first
   if (gridStats.length) {
