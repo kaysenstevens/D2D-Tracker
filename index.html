@@ -1316,6 +1316,8 @@ function renderDashboard() {
   const { qual, disp } = aggregateAppts();
   const mo = getMonth(currentMonth);
   renderTrends();
+  renderGoalTracker();
+  if (dashAllMonthsOpen) renderAllMonths();
 
   document.getElementById('dash-title').textContent = monthName(currentMonth);
   document.getElementById('dash-subtitle').textContent =
