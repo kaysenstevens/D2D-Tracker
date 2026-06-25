@@ -657,6 +657,22 @@
       </div>
       <div class="content">
         <div id="fu-events-section"></div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+          <div style="position:relative;flex:1">
+            <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none"></i>
+            <input type="text" id="fu-search" placeholder="Search leads…" oninput="setLeadSearch(this.value)"
+              style="width:100%;padding:8px 10px 8px 32px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;box-sizing:border-box">
+          </div>
+          <select id="fu-sort" onchange="setLeadSort(this.value)"
+            style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;cursor:pointer">
+            <option value="date">By follow-up date</option>
+            <option value="interest-high">Interest: Hot first</option>
+            <option value="interest-low">Interest: Cold first</option>
+            <option value="contacted-recent">Recently contacted</option>
+            <option value="contacted-old">Least recently contacted</option>
+            <option value="name">Name A–Z</option>
+          </select>
+        </div>
         <div class="fu-toolbar">
           <div class="filter-group" id="fu-interest-filters">
             <button class="filter-btn active" onclick="setInterestFilter('all',this)">All</button>
