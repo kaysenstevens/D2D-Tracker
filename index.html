@@ -1534,11 +1534,22 @@ function toggleDashSection(section) {
 }
 
 /* ---- Goal Tracker ---- */
+const GOAL_START = new Date('2026-06-25');
+const GOAL_END   = new Date('2026-08-31');
+
 function renderGoalTracker() {
   const el = document.getElementById('dash-goal-content');
   if (!el) return;
 
-  // Gather all-time stats for ratios
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const daysLeft = Math.max(0, Math.ceil((GOAL_END - today) / 86400000));
+  const weeksLeft = Math.max(1, Math.ceil(daysLeft / 7));
+  const totalDays = Math.ceil((GOAL_END - GOAL_START) / 86400000);
+  const daysElapsed = Math.max(0, Math.ceil((today - GOAL_START) / 86400000));
+  const timePct = Math.min(100, Math.round(daysElapsed / totalDays * 100));
+
+  // All-time conversion rates
   let totalDk=0, totalQp=0, totalSets=0, totalSits=0, totalCloses=0;
   Object.values(state.months || {}).forEach(mo => {
     (mo.weeks || []).forEach(wk => {
@@ -1552,49 +1563,75 @@ function renderGoalTracker() {
     });
   });
 
-  const goalCloses = Math.max(1, parseInt(document.getElementById('goal-closes-input')?.value) || 4);
+  // Progress since GOAL_START — include weeks from Jun/Jul/Aug 2026
+  // A week "counts" if its month is 2026-06, 2026-07, or 2026-08
+  const GOAL_MONTHS = ['2026-06', '2026-07', '2026-08'];
+  let haveDk=0, haveQp=0, haveSets=0, haveSits=0, haveCloses=0;
+  GOAL_MONTHS.forEach(m => {
+    const mo = state.months[m];
+    if (!mo) return;
+    (mo.weeks || []).forEach(wk => {
+      Object.values(wk.days || {}).forEach(d => {
+        haveDk    += Number(d.dk)     || 0;
+        haveQp    += Number(d.qp)     || 0;
+        haveSets  += Number(d.sets)   || 0;
+        haveSits  += Number(d.sits)   || 0;
+        haveCloses+= Number(d.closes) || 0;
+      });
+    });
+  });
 
-  // Conversion rates (use 1 as fallback to avoid /0)
-  const sitCloseRate  = totalSits   > 0 ? totalCloses / totalSits   : 0.5;
-  const setSitRate    = totalSets   > 0 ? totalSits   / totalSets   : 0.5;
-  const qpSetRate     = totalQp     > 0 ? totalSets   / totalQp     : 0.2;
-  const dkQpRate      = totalDk     > 0 ? totalQp     / totalDk     : 0.25;
+  const goalCloses = Math.max(1, parseInt(document.getElementById('goal-closes-input')?.value) || 10);
+  const closesLeft = Math.max(0, goalCloses - haveCloses);
 
+  // Conversion rates
+  const sitCloseRate = totalSits   > 0 ? totalCloses / totalSits   : 0.5;
+  const setSitRate   = totalSets   > 0 ? totalSits   / totalSets   : 0.5;
+  const qpSetRate    = totalQp     > 0 ? totalSets   / totalQp     : 0.2;
+  const dkQpRate     = totalDk     > 0 ? totalQp     / totalDk     : 0.25;
   const noData = totalDk === 0;
 
-  // Reverse-engineer from goal
-  const neededSits  = sitCloseRate  > 0 ? Math.ceil(goalCloses / sitCloseRate)  : '—';
-  const neededSets  = setSitRate    > 0 && neededSits !== '—' ? Math.ceil(neededSits / setSitRate)   : '—';
-  const neededQp    = qpSetRate     > 0 && neededSets !== '—' ? Math.ceil(neededSets / qpSetRate)    : '—';
-  const neededDk    = dkQpRate      > 0 && neededQp   !== '—' ? Math.ceil(neededQp   / dkQpRate)     : '—';
+  // Total needed for full goal
+  const needSits = sitCloseRate > 0 ? Math.ceil(goalCloses / sitCloseRate) : '—';
+  const needSets = setSitRate   > 0 && needSits !== '—' ? Math.ceil(needSits / setSitRate) : '—';
+  const needQp   = qpSetRate    > 0 && needSets !== '—' ? Math.ceil(needSets / qpSetRate)  : '—';
+  const needDk   = dkQpRate     > 0 && needQp   !== '—' ? Math.ceil(needQp   / dkQpRate)   : '—';
 
-  // Current month progress
-  const { totals } = aggregateWeeks();
+  // Per-week targets for what's left
+  const wkSits = sitCloseRate > 0 ? Math.ceil(closesLeft / sitCloseRate / weeksLeft) : '—';
+  const wkSets = setSitRate   > 0 && wkSits !== '—' ? Math.ceil(wkSits / setSitRate / weeksLeft * weeksLeft) : '—';
+  const wkQp   = qpSetRate    > 0 && wkSets !== '—' ? Math.ceil(wkSets / qpSetRate  / weeksLeft * weeksLeft) : '—';
+  const wkDk   = dkQpRate     > 0 && wkQp   !== '—' ? Math.ceil(wkQp   / dkQpRate   / weeksLeft * weeksLeft) : '—';
+
+  // Per-week targets (simple)
+  const pwSits = sitCloseRate > 0 && closesLeft > 0 ? Math.ceil(closesLeft / sitCloseRate / weeksLeft) : 0;
+  const pwSets = setSitRate   > 0 && pwSits > 0 ? Math.ceil(pwSits / setSitRate) : 0;
+  const pwQp   = qpSetRate    > 0 && pwSets > 0 ? Math.ceil(pwSets / qpSetRate)  : 0;
+  const pwDk   = dkQpRate     > 0 && pwQp   > 0 ? Math.ceil(pwQp   / dkQpRate)   : 0;
 
   const steps = [
-    { label: 'Doors Knocked',      need: neededDk,    have: totals.dk,     color: '#3b82f6', icon: 'ti-door',          rate: noData ? null : `${(dkQpRate*100).toFixed(0)}% contact rate` },
-    { label: 'Qualified Pitches',  need: neededQp,    have: totals.qp,     color: '#a855f7', icon: 'ti-speakerphone',  rate: noData ? null : `${(qpSetRate*100).toFixed(0)}% set rate` },
-    { label: 'Sets',               need: neededSets,  have: totals.sets,   color: '#14b8a6', icon: 'ti-calendar-plus', rate: noData ? null : `${(setSitRate*100).toFixed(0)}% sit rate` },
-    { label: 'Sits',               need: neededSits,  have: totals.sits,   color: '#f59e0b', icon: 'ti-armchair',      rate: noData ? null : `${(sitCloseRate*100).toFixed(0)}% close rate` },
-    { label: 'Closes',             need: goalCloses,  have: totals.closes, color: '#22c55e', icon: 'ti-circle-check',  rate: null },
+    { label:'Doors Knocked',     need:needDk,   have:haveDk,     pw:pwDk,   color:'#3b82f6', icon:'ti-door',          rate: noData?null:`${(dkQpRate*100).toFixed(0)}% contact rate` },
+    { label:'Qualified Pitches', need:needQp,   have:haveQp,     pw:pwQp,   color:'#a855f7', icon:'ti-speakerphone',  rate: noData?null:`${(qpSetRate*100).toFixed(0)}% set rate` },
+    { label:'Sets',              need:needSets, have:haveSets,   pw:pwSets, color:'#14b8a6', icon:'ti-calendar-plus', rate: noData?null:`${(setSitRate*100).toFixed(0)}% sit rate` },
+    { label:'Sits',              need:needSits, have:haveSits,   pw:pwSits, color:'#f59e0b', icon:'ti-armchair',      rate: noData?null:`${(sitCloseRate*100).toFixed(0)}% close rate` },
+    { label:'Closes',            need:goalCloses,have:haveCloses,pw:Math.ceil(closesLeft/weeksLeft)||0, color:'#22c55e', icon:'ti-circle-check', rate:null },
   ];
 
   const rows = steps.map((s, i) => {
     const pct = s.need !== '—' && s.need > 0 ? Math.min(100, Math.round(s.have / s.need * 100)) : 0;
     const done = s.have >= s.need;
-    const remaining = s.need !== '—' ? Math.max(0, s.need - s.have) : '—';
+    const rem = s.need !== '—' ? Math.max(0, s.need - s.have) : '—';
     const connector = i < steps.length - 1
-      ? `<div style="text-align:center;color:var(--text3);font-size:18px;line-height:1;margin:2px 0">↓</div>`
-      : '';
+      ? `<div style="text-align:center;color:var(--text3);font-size:18px;line-height:1;margin:2px 0">↓</div>` : '';
     return `
-      <div style="background:var(--surface2);border-radius:12px;padding:14px 16px;border:1px solid ${done ? s.color+'44' : 'var(--border)'}">
+      <div style="background:var(--surface2);border-radius:12px;padding:14px 16px;border:1px solid ${done?s.color+'44':'var(--border)'}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <i class="ti ${s.icon}" style="color:${s.color};font-size:16px"></i>
             <span style="font-size:13px;font-weight:600;color:var(--text1)">${s.label}</span>
             ${s.rate ? `<span style="font-size:11px;color:var(--text3)">(${s.rate})</span>` : ''}
           </div>
-          <div style="text-align:right">
+          <div style="text-align:right;flex-shrink:0;margin-left:8px">
             <span style="font-size:18px;font-weight:700;color:${s.color}">${s.have}</span>
             <span style="font-size:13px;color:var(--text3)"> / ${s.need}</span>
           </div>
@@ -1603,17 +1640,33 @@ function renderGoalTracker() {
           <div style="width:${pct}%;height:100%;background:${s.color};border-radius:99px;transition:width 0.4s"></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:6px">
-          <span style="font-size:11px;color:var(--text3)">${done ? '✓ On track' : `${remaining} more needed`}</span>
-          <span style="font-size:11px;color:var(--text3)">${pct}%</span>
+          <span style="font-size:11px;color:var(--text3)">${done ? '✓ On track' : `${rem} more to go`}</span>
+          <span style="font-size:11px;color:${s.color};font-weight:600">${s.pw > 0 && !done ? `~${s.pw}/wk needed` : pct+'%'}</span>
         </div>
       </div>
       ${connector}`;
   }).join('');
 
+  // Time remaining bar
+  const timebar = `
+    <div style="margin-bottom:16px;background:var(--surface2);border-radius:12px;padding:14px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--text1)"><i class="ti ti-calendar-event" style="margin-right:6px"></i>Jun 25 → Aug 31</span>
+        <span style="font-size:13px;color:var(--text2);font-weight:600">${daysLeft} days left</span>
+      </div>
+      <div style="background:var(--surface3,#1a1a2e);border-radius:99px;height:6px;overflow:hidden">
+        <div style="width:${timePct}%;height:100%;background:linear-gradient(90deg,#6c63ff,#a855f7);border-radius:99px"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <span style="font-size:11px;color:var(--text3)">${weeksLeft} week${weeksLeft!==1?'s':''} remaining</span>
+        <span style="font-size:11px;color:var(--text3)">${timePct}% of summer elapsed</span>
+      </div>
+    </div>`;
+
   el.innerHTML = noData
-    ? `<div class="empty"><i class="ti ti-info-circle"></i><p>Add weekly data first — ratios will be calculated from your history.</p></div>`
-    : `<div style="display:flex;flex-direction:column;gap:4px">${rows}</div>
-       <div style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">Targets based on your all-time conversion rates · current month progress shown</div>`;
+    ? `<div class="empty"><i class="ti ti-info-circle"></i><p>Add weekly data first — conversion rates will be calculated from your history.</p></div>`
+    : timebar + `<div style="display:flex;flex-direction:column;gap:4px">${rows}</div>
+       <div style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">Based on your all-time conversion rates · progress from Jun 25 forward</div>`;
 }
 
 /* ---- All Months Summary ---- */
