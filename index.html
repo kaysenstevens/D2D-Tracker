@@ -3463,10 +3463,7 @@ function openObjModal() {
   currentObjType = 'objection';
   document.querySelectorAll('#obj-modal .filter-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('objtype-objection').classList.add('active');
-  document.getElementById('obj-stage').value = '';
   document.getElementById('obj-description').value = '';
-  document.getElementById('obj-response').value = '';
-  document.getElementById('obj-date').value = new Date().toISOString().slice(0,10);
   document.getElementById('obj-modal').style.display = 'flex';
 }
 function closeObjModal() { document.getElementById('obj-modal').style.display = 'none'; }
