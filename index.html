@@ -2823,12 +2823,7 @@ function renderLeads() {
     return;
   }
 
-  // Sort: overdue first, then by follow-up date, then no date last
-  const sorted = leads.slice().sort((a,b) => {
-    const da = a.followUpDate ? daysUntil(a.followUpDate) : 9999;
-    const db = b.followUpDate ? daysUntil(b.followUpDate) : 9999;
-    return da - db;
-  });
+  const sorted = sortLeads(leads);
 
   // Group by city
   const cities = {};
