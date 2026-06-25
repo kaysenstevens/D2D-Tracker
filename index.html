@@ -3476,8 +3476,7 @@ function saveObjEntry() {
     type: currentObjType,
     stage: document.getElementById('obj-stage').value,
     description: desc,
-    response: document.getElementById('obj-response').value.trim(),
-    date: document.getElementById('obj-date').value || new Date().toISOString().slice(0,10),
+    date: new Date().toISOString().slice(0,10),
     createdAt: new Date().toISOString(),
   });
   save();
