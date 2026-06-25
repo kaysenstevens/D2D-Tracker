@@ -3275,7 +3275,8 @@ function startRealtimeSync() {
     const localStr = JSON.stringify(state);
     if (remoteStr !== localStr) {
       state = JSON.parse(remoteStr);
-      localStorage.setItem('d2d_v3', remoteStr);
+      applySeeds(false);
+      localStorage.setItem('d2d_v3', JSON.stringify(state));
       renderAll();
     }
   }, e => console.error('Sync listener error', e));
