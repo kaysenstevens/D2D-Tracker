@@ -1746,7 +1746,7 @@ function renderGoalTracker() {
 
   el.innerHTML = noData
     ? `<div class="empty"><i class="ti ti-info-circle"></i><p>Add weekly data first — conversion rates will be calculated from your history.</p></div>`
-    : timebar + pacecards + `<div style="display:flex;flex-direction:column;gap:4px">${rows}</div>
+    : timebar + commissionCard + pacecards + `<div style="display:flex;flex-direction:column;gap:4px">${rows}</div>
        <div style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">Based on your all-time conversion rates · progress from Jun 25 forward</div>`;
 }
 
