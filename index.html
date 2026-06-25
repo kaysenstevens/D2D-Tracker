@@ -2470,6 +2470,11 @@ let fuInterestFilter = 'all';
 let fuUrgencyFilter = 'all';
 let fuView = 'list';
 let fuMap = null;
+let fuSearch = '';
+let fuSort = 'date';
+
+function setLeadSearch(val) { fuSearch = val.trim().toLowerCase(); renderLeads(); }
+function setLeadSort(val) { fuSort = val; renderLeads(); }
 
 function setInterestFilter(val, btn) {
   fuInterestFilter = val;
