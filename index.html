@@ -1280,6 +1280,7 @@ function renderDashboard() {
   const { totals, byDay } = aggregateWeeks();
   const { qual, disp } = aggregateAppts();
   const mo = getMonth(currentMonth);
+  renderTrends();
 
   document.getElementById('dash-title').textContent = monthName(currentMonth);
   document.getElementById('dash-subtitle').textContent =
