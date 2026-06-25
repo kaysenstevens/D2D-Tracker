@@ -3473,6 +3473,122 @@ initMonthPicker();
 renderAll();
 initSync();
 updateSyncUI();
+
+/* ---- Objections ---- */
+function getObjEntries() { if (!state.objections) state.objections = []; return state.objections; }
+
+let currentObjType = 'objection';
+function setObjType(type, btn) {
+  currentObjType = type;
+  document.querySelectorAll('#obj-modal .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function openObjModal() {
+  currentObjType = 'objection';
+  document.querySelectorAll('#obj-modal .filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('objtype-objection').classList.add('active');
+  document.getElementById('obj-stage').value = '';
+  document.getElementById('obj-description').value = '';
+  document.getElementById('obj-response').value = '';
+  document.getElementById('obj-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('obj-modal').style.display = 'flex';
+}
+function closeObjModal() { document.getElementById('obj-modal').style.display = 'none'; }
+
+function saveObjEntry() {
+  const desc = document.getElementById('obj-description').value.trim();
+  if (!desc) { toast('Please describe what happened'); return; }
+  if (!state.objections) state.objections = [];
+  state.objections.unshift({
+    type: currentObjType,
+    stage: document.getElementById('obj-stage').value,
+    description: desc,
+    response: document.getElementById('obj-response').value.trim(),
+    date: document.getElementById('obj-date').value || new Date().toISOString().slice(0,10),
+    createdAt: new Date().toISOString(),
+  });
+  save();
+  closeObjModal();
+  renderObjections();
+  toast('Entry logged');
+}
+
+function deleteObjEntry(idx) {
+  if (!confirm('Delete this entry?')) return;
+  state.objections.splice(idx, 1);
+  save();
+  renderObjections();
+}
+
+function renderObjections() {
+  const el = document.getElementById('obj-log');
+  const patEl = document.getElementById('obj-patterns');
+  if (!el || !patEl) return;
+  const entries = getObjEntries();
+
+  if (!entries.length) {
+    patEl.innerHTML = '';
+    el.innerHTML = `<div class="panel"><div class="empty"><i class="ti ti-message-off"></i><p>No entries yet. Log your first objection or situation from the field.</p></div></div>`;
+    return;
+  }
+
+  // Pattern analysis
+  const typeCounts = {};
+  const stageCounts = {};
+  const keywordCounts = {};
+  const STOP_WORDS = new Set(['the','a','an','i','it','to','is','was','they','we','he','she','and','or','but','in','on','at','for','of','my','me','that','this','just','said','told','not','no','do','did']);
+
+  entries.forEach(e => {
+    typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
+    if (e.stage) stageCounts[e.stage] = (stageCounts[e.stage] || 0) + 1;
+    // Extract keywords from description
+    e.description.toLowerCase().replace(/[^a-z\s]/g,'').split(/\s+/).filter(w => w.length > 3 && !STOP_WORDS.has(w)).forEach(w => {
+      keywordCounts[w] = (keywordCounts[w] || 0) + 1;
+    });
+  });
+
+  const TYPE_META = { objection: { label: '💬 Objection', color: 'var(--blue)' }, situation: { label: '⚡ Situation', color: 'var(--amber)' }, stuck: { label: '🧱 Got stuck', color: 'var(--red)' }, win: { label: '✅ Win', color: 'var(--green)' } };
+  const topStage = Object.entries(stageCounts).sort((a,b) => b[1]-a[1])[0];
+  const topKeywords = Object.entries(keywordCounts).filter(([,v]) => v >= 2).sort((a,b) => b[1]-a[1]).slice(0,8);
+  const maxCount = Math.max(...Object.values(stageCounts), 1);
+
+  patEl.innerHTML = `
+    <div class="insight-box" style="margin-bottom:16px">
+      <h3><i class="ti ti-chart-bar" style="color:var(--accent)"></i> ${entries.length} entries logged</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        ${Object.entries(typeCounts).map(([t,c]) => `<span style="font-size:12px;color:var(--text2)">${TYPE_META[t]?.label || t}: <b style="color:var(--text)">${c}</b></span>`).join('')}
+      </div>
+      ${topStage ? `<div style="font-size:12px;color:var(--text2);margin-bottom:10px">📍 Most common stage you get stuck: <b style="color:var(--text)">${topStage[0]}</b> (${topStage[1]}x)</div>` : ''}
+      ${Object.entries(stageCounts).length > 0 ? `
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Breakdown by pitch stage</div>
+        ${Object.entries(stageCounts).sort((a,b)=>b[1]-a[1]).map(([s,c]) => `
+          <div style="margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:2px"><span>${s}</span><span>${c}</span></div>
+            <div class="pattern-bar-wrap"><div class="obj-pattern-bar" style="width:${Math.round(c/maxCount*100)}%"></div></div>
+          </div>`).join('')}
+      ` : ''}
+      ${topKeywords.length ? `<div style="margin-top:10px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Common themes</div><div style="display:flex;gap:5px;flex-wrap:wrap">${topKeywords.map(([w,c]) => `<span style="font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:2px 9px;color:var(--text2)">${w} <b style="color:var(--text)">${c}x</b></span>`).join('')}</div></div>` : ''}
+    </div>`;
+
+  const typeColors = { objection: '#3b82f6', situation: '#f59e0b', stuck: '#ef4444', win: '#22c55e' };
+  el.innerHTML = `<div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Recent entries</div>` +
+    entries.map((e, i) => `
+      <div class="obj-entry ${e.type}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
+              <span class="obj-type-chip" style="background:${typeColors[e.type]}22;color:${typeColors[e.type]}">${TYPE_META[e.type]?.label || e.type}</span>
+              ${e.stage ? `<span class="obj-stage-chip">${e.stage}</span>` : ''}
+              <span style="font-size:10px;color:var(--text3)">${formatDate(e.date)}</span>
+            </div>
+            <div style="font-size:13px;color:var(--text);margin-bottom:${e.response?'6px':'0'}">${e.description}</div>
+            ${e.response ? `<div style="font-size:12px;color:var(--text3);font-style:italic">→ ${e.response}</div>` : ''}
+          </div>
+          <button onclick="deleteObjEntry(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;flex-shrink:0;padding:0"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`).join('');
+}
 </script>
 </body>
 </html>
