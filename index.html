@@ -1434,7 +1434,7 @@ function renderTrends() {
   // Last two weeks
   const prev = weeks[weeks.length - 2];
   const curr = weeks[weeks.length - 1];
-  const sumDays = (wk, key) => (wk.days || []).reduce((a, d) => a + (Number(d[key]) || 0), 0);
+  const sumDays = (wk, key) => Object.values(wk.days || {}).reduce((a, d) => a + (Number(d[key]) || 0), 0);
 
   const cards = METRICS.map(m => {
     const c = sumDays(curr, m.key);
