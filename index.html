@@ -608,6 +608,35 @@
             <div class="disp-grid" id="disp-display"></div>
           </div>
         </div>
+
+        <!-- Goal Tracker -->
+        <div class="panel" id="dash-goal-panel">
+          <div class="panel-header" onclick="toggleDashSection('goal')" style="cursor:pointer">
+            <div class="panel-title"><i class="ti ti-target"></i> Goal Tracker</div>
+            <i class="ti ti-chevron-up" id="dash-goal-chevron"></i>
+          </div>
+          <div id="dash-goal-body">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+              <label style="font-size:13px;color:var(--text2)">I want to close</label>
+              <input id="goal-closes-input" type="number" min="1" value="4"
+                style="width:64px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:15px;font-weight:700;text-align:center"
+                oninput="renderGoalTracker()">
+              <label style="font-size:13px;color:var(--text2)">deals this week</label>
+            </div>
+            <div id="dash-goal-content"></div>
+          </div>
+        </div>
+
+        <!-- All Months -->
+        <div class="panel" id="dash-allmonths-panel">
+          <div class="panel-header" onclick="toggleDashSection('allmonths')" style="cursor:pointer">
+            <div class="panel-title"><i class="ti ti-calendar-stats"></i> All-time summary</div>
+            <i class="ti ti-chevron-down" id="dash-allmonths-chevron"></i>
+          </div>
+          <div id="dash-allmonths-body" style="display:none">
+            <div id="dash-allmonths-content"></div>
+          </div>
+        </div>
       </div>
     </div>
 
