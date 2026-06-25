@@ -1679,6 +1679,45 @@ function renderGoalTracker() {
       </div>
     </div>`;
 
+  // Commission projection
+  const commissionPerDeal = Math.max(0, parseFloat(document.getElementById('goal-commission-input')?.value) || 4500);
+  const retentionRate     = Math.max(0, Math.min(100, parseFloat(document.getElementById('goal-retention-input')?.value) || 70)) / 100;
+  const fmt = n => '$' + Math.round(n).toLocaleString();
+  const grossGoal    = goalCloses * commissionPerDeal;
+  const netGoal      = goalCloses * commissionPerDeal * retentionRate;
+  const grossSoFar   = haveCloses * commissionPerDeal;
+  const netSoFar     = haveCloses * commissionPerDeal * retentionRate;
+  const grossRemain  = Math.max(0, goalCloses - haveCloses) * commissionPerDeal;
+  const netRemain    = Math.max(0, goalCloses - haveCloses) * commissionPerDeal * retentionRate;
+
+  const commissionCard = `
+    <div style="background:linear-gradient(135deg,#1a2a1a,#0f2010);border:1px solid #22c55e44;border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#22c55e;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px">
+        <i class="ti ti-cash" style="margin-right:6px"></i>Commission Projection
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Earned so far</div>
+          <div style="font-size:20px;font-weight:800;color:#22c55e">${fmt(netSoFar)}</div>
+          <div style="font-size:10px;color:var(--text3)">${fmt(grossSoFar)} gross · ${haveCloses} deal${haveCloses!==1?'s':''}</div>
+        </div>
+        <div style="text-align:center;border-left:1px solid #22c55e22;border-right:1px solid #22c55e22">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Still to earn</div>
+          <div style="font-size:20px;font-weight:800;color:#86efac">${fmt(netRemain)}</div>
+          <div style="font-size:10px;color:var(--text3)">${fmt(grossRemain)} gross · ${Math.max(0,goalCloses-haveCloses)} deal${Math.max(0,goalCloses-haveCloses)!==1?'s':''}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Goal total</div>
+          <div style="font-size:20px;font-weight:800;color:#4ade80">${fmt(netGoal)}</div>
+          <div style="font-size:10px;color:var(--text3)">${fmt(grossGoal)} gross · ${goalCloses} deals</div>
+        </div>
+      </div>
+      <div style="background:#22c55e18;border-radius:99px;height:6px;overflow:hidden">
+        <div style="width:${Math.min(100,Math.round(haveCloses/goalCloses*100))}%;height:100%;background:#22c55e;border-radius:99px;transition:width 0.4s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:6px;text-align:center">After ${Math.round(retentionRate*100)}% retention · ${Math.round(haveCloses/goalCloses*100)}% of goal reached</div>
+    </div>`;
+
   // Daily / weekly pace cards
   const dkRemaining = Math.max(0, (needDk !== '—' ? needDk : 0) - haveDk);
   const sitsRemaining = Math.max(0, (needSits !== '—' ? needSits : 0) - haveSits);
