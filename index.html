@@ -1182,7 +1182,10 @@ function applySeeds(saveAfter) {
   let seeded = false;
   Object.entries(KAYSEN_WEEKS).forEach(([month, weeks]) => {
     if (!state.months[month]) state.months[month] = { weeks: [], appointments: [] };
-    if (!state.months[month].weeks || state.months[month].weeks.length === 0) {
+    const existing = state.months[month].weeks;
+    const hasRealData = existing && existing.length > 0 &&
+      existing.some(wk => wk.days && Object.values(wk.days).some(d => (d.dk || 0) > 0));
+    if (!hasRealData) {
       state.months[month].weeks = weeks;
       seeded = true;
     }
