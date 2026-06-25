@@ -746,12 +746,11 @@
 <div class="modal-overlay" id="obj-modal" style="display:none" onclick="if(event.target===this)closeObjModal()">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title" id="obj-modal-title">Log Field Entry</div>
+      <div class="modal-title">Log Entry</div>
       <button class="close-btn" onclick="closeObjModal()"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label">Type</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="filter-btn active" id="objtype-objection" onclick="setObjType('objection',this)">💬 Objection</button>
           <button class="filter-btn" id="objtype-situation" onclick="setObjType('situation',this)">⚡ Situation</button>
@@ -760,27 +759,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Pitch stage where it happened</label>
-        <select class="form-input" id="obj-stage">
-          <option value="">— Select stage —</option>
-          <option value="Door approach">Door approach</option>
-          <option value="Opener">Opener</option>
-          <option value="Qualifying">Qualifying</option>
-          <option value="Transition inside">Transition inside</option>
-          <option value="Pitch / numbers">Pitch / numbers</option>
-          <option value="Pullback">Pullback</option>
-          <option value="Close">Close</option>
-          <option value="Objection handling">Objection handling</option>
-          <option value="Follow-up">Follow-up</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">What happened?</label>
-        <textarea class="form-input" id="obj-description" rows="3" placeholder="Describe the objection or situation…"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">How did you handle it? (optional)</label>
-        <textarea class="form-input" id="obj-response" rows="2" placeholder="What did you say or do?"></textarea>
+        <textarea class="form-input" id="obj-description" rows="4" placeholder="What happened?"></textarea>
       </div>
       <div class="form-group">
         <label class="form-label">Date</label>
