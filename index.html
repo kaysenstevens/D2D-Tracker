@@ -1515,6 +1515,179 @@ function renderTrends() {
   `;
 }
 
+/* ---- Dashboard section toggles ---- */
+let dashGoalOpen = true;
+let dashAllMonthsOpen = false;
+function toggleDashSection(section) {
+  if (section === 'goal') {
+    dashGoalOpen = !dashGoalOpen;
+    document.getElementById('dash-goal-body').style.display = dashGoalOpen ? '' : 'none';
+    document.getElementById('dash-goal-chevron').className = dashGoalOpen ? 'ti ti-chevron-up' : 'ti ti-chevron-down';
+  } else if (section === 'allmonths') {
+    dashAllMonthsOpen = !dashAllMonthsOpen;
+    document.getElementById('dash-allmonths-body').style.display = dashAllMonthsOpen ? '' : 'none';
+    document.getElementById('dash-allmonths-chevron').className = dashAllMonthsOpen ? 'ti ti-chevron-up' : 'ti ti-chevron-down';
+    if (dashAllMonthsOpen) renderAllMonths();
+  }
+}
+
+/* ---- Goal Tracker ---- */
+function renderGoalTracker() {
+  const el = document.getElementById('dash-goal-content');
+  if (!el) return;
+
+  // Gather all-time stats for ratios
+  let totalDk=0, totalQp=0, totalSets=0, totalSits=0, totalCloses=0;
+  Object.values(state.months || {}).forEach(mo => {
+    (mo.weeks || []).forEach(wk => {
+      Object.values(wk.days || {}).forEach(d => {
+        totalDk    += Number(d.dk)     || 0;
+        totalQp    += Number(d.qp)     || 0;
+        totalSets  += Number(d.sets)   || 0;
+        totalSits  += Number(d.sits)   || 0;
+        totalCloses+= Number(d.closes) || 0;
+      });
+    });
+  });
+
+  const goalCloses = Math.max(1, parseInt(document.getElementById('goal-closes-input')?.value) || 4);
+
+  // Conversion rates (use 1 as fallback to avoid /0)
+  const sitCloseRate  = totalSits   > 0 ? totalCloses / totalSits   : 0.5;
+  const setSitRate    = totalSets   > 0 ? totalSits   / totalSets   : 0.5;
+  const qpSetRate     = totalQp     > 0 ? totalSets   / totalQp     : 0.2;
+  const dkQpRate      = totalDk     > 0 ? totalQp     / totalDk     : 0.25;
+
+  const noData = totalDk === 0;
+
+  // Reverse-engineer from goal
+  const neededSits  = sitCloseRate  > 0 ? Math.ceil(goalCloses / sitCloseRate)  : '—';
+  const neededSets  = setSitRate    > 0 && neededSits !== '—' ? Math.ceil(neededSits / setSitRate)   : '—';
+  const neededQp    = qpSetRate     > 0 && neededSets !== '—' ? Math.ceil(neededSets / qpSetRate)    : '—';
+  const neededDk    = dkQpRate      > 0 && neededQp   !== '—' ? Math.ceil(neededQp   / dkQpRate)     : '—';
+
+  // Current month progress
+  const { totals } = aggregateWeeks();
+
+  const steps = [
+    { label: 'Doors Knocked',      need: neededDk,    have: totals.dk,     color: '#3b82f6', icon: 'ti-door',          rate: noData ? null : `${(dkQpRate*100).toFixed(0)}% contact rate` },
+    { label: 'Qualified Pitches',  need: neededQp,    have: totals.qp,     color: '#a855f7', icon: 'ti-speakerphone',  rate: noData ? null : `${(qpSetRate*100).toFixed(0)}% set rate` },
+    { label: 'Sets',               need: neededSets,  have: totals.sets,   color: '#14b8a6', icon: 'ti-calendar-plus', rate: noData ? null : `${(setSitRate*100).toFixed(0)}% sit rate` },
+    { label: 'Sits',               need: neededSits,  have: totals.sits,   color: '#f59e0b', icon: 'ti-armchair',      rate: noData ? null : `${(sitCloseRate*100).toFixed(0)}% close rate` },
+    { label: 'Closes',             need: goalCloses,  have: totals.closes, color: '#22c55e', icon: 'ti-circle-check',  rate: null },
+  ];
+
+  const rows = steps.map((s, i) => {
+    const pct = s.need !== '—' && s.need > 0 ? Math.min(100, Math.round(s.have / s.need * 100)) : 0;
+    const done = s.have >= s.need;
+    const remaining = s.need !== '—' ? Math.max(0, s.need - s.have) : '—';
+    const connector = i < steps.length - 1
+      ? `<div style="text-align:center;color:var(--text3);font-size:18px;line-height:1;margin:2px 0">↓</div>`
+      : '';
+    return `
+      <div style="background:var(--surface2);border-radius:12px;padding:14px 16px;border:1px solid ${done ? s.color+'44' : 'var(--border)'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <i class="ti ${s.icon}" style="color:${s.color};font-size:16px"></i>
+            <span style="font-size:13px;font-weight:600;color:var(--text1)">${s.label}</span>
+            ${s.rate ? `<span style="font-size:11px;color:var(--text3)">(${s.rate})</span>` : ''}
+          </div>
+          <div style="text-align:right">
+            <span style="font-size:18px;font-weight:700;color:${s.color}">${s.have}</span>
+            <span style="font-size:13px;color:var(--text3)"> / ${s.need}</span>
+          </div>
+        </div>
+        <div style="background:var(--surface3,#1a1a2e);border-radius:99px;height:6px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${s.color};border-radius:99px;transition:width 0.4s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px">
+          <span style="font-size:11px;color:var(--text3)">${done ? '✓ On track' : `${remaining} more needed`}</span>
+          <span style="font-size:11px;color:var(--text3)">${pct}%</span>
+        </div>
+      </div>
+      ${connector}`;
+  }).join('');
+
+  el.innerHTML = noData
+    ? `<div class="empty"><i class="ti ti-info-circle"></i><p>Add weekly data first — ratios will be calculated from your history.</p></div>`
+    : `<div style="display:flex;flex-direction:column;gap:4px">${rows}</div>
+       <div style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">Targets based on your all-time conversion rates · current month progress shown</div>`;
+}
+
+/* ---- All Months Summary ---- */
+function renderAllMonths() {
+  const el = document.getElementById('dash-allmonths-content');
+  if (!el) return;
+
+  const months = Object.keys(state.months || {}).sort();
+  if (months.length === 0) {
+    el.innerHTML = '<div class="empty"><i class="ti ti-calendar-off"></i><p>No data yet</p></div>';
+    return;
+  }
+
+  let grandDk=0, grandQp=0, grandSets=0, grandSits=0, grandCloses=0, grandFails=0;
+
+  const rows = months.map(m => {
+    let dk=0, qp=0, sets=0, sits=0, closes=0, fails=0;
+    (state.months[m].weeks || []).forEach(wk => {
+      Object.values(wk.days || {}).forEach(d => {
+        dk+=Number(d.dk)||0; qp+=Number(d.qp)||0; sets+=Number(d.sets)||0;
+        sits+=Number(d.sits)||0; closes+=Number(d.closes)||0; fails+=Number(d.fails)||0;
+      });
+    });
+    grandDk+=dk; grandQp+=qp; grandSets+=sets; grandSits+=sits; grandCloses+=closes; grandFails+=fails;
+    const closeRate = dk > 0 ? (closes/dk*100).toFixed(1)+'%' : '—';
+    const setRate   = dk > 0 ? (sets/dk*100).toFixed(1)+'%'   : '—';
+    return `<tr>
+      <td style="padding:10px 8px;font-weight:600;color:var(--text1);white-space:nowrap">${monthName(m)}</td>
+      <td style="padding:10px 8px;text-align:center;color:#3b82f6;font-weight:600">${dk||'—'}</td>
+      <td style="padding:10px 8px;text-align:center;color:#a855f7">${qp||'—'}</td>
+      <td style="padding:10px 8px;text-align:center;color:#14b8a6">${sets||'—'}</td>
+      <td style="padding:10px 8px;text-align:center;color:#f59e0b">${sits||'—'}</td>
+      <td style="padding:10px 8px;text-align:center;color:#22c55e;font-weight:700">${closes||'—'}</td>
+      <td style="padding:10px 8px;text-align:center;color:#ef4444">${fails||'—'}</td>
+      <td style="padding:10px 8px;text-align:center;color:var(--text2);font-size:12px">${setRate}</td>
+      <td style="padding:10px 8px;text-align:center;color:var(--text2);font-size:12px">${closeRate}</td>
+    </tr>`;
+  }).join('');
+
+  const grandCloseRate = grandDk > 0 ? (grandCloses/grandDk*100).toFixed(1)+'%' : '—';
+  const grandSetRate   = grandDk > 0 ? (grandSets/grandDk*100).toFixed(1)+'%'   : '—';
+
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:8px;text-align:left;color:var(--text3);font-weight:500">Month</th>
+            <th style="padding:8px;text-align:center;color:var(--text3);font-weight:500">DK</th>
+            <th style="padding:8px;text-align:center;color:var(--text3);font-weight:500">QP</th>
+            <th style="padding:8px;text-align:center;color:var(--text3);font-weight:500">Sets</th>
+            <th style="padding:8px;text-align:center;color:var(--text3);font-weight:500">Sits</th>
+            <th style="padding:8px;text-align:center;color:var(--text3);font-weight:500">Closes</th>
+            <th style="padding:8px;text-align:center;color:var(--text3);font-weight:500">Fails</th>
+            <th style="padding:8px;text-align:center;color:var(--text3);font-weight:500">Set%</th>
+            <th style="padding:8px;text-align:center;color:var(--text3);font-weight:500">Close%</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr style="border-top:2px solid var(--border);background:var(--surface2)">
+            <td style="padding:10px 8px;font-weight:700;color:var(--text1)">All time</td>
+            <td style="padding:10px 8px;text-align:center;color:#3b82f6;font-weight:700">${grandDk||'—'}</td>
+            <td style="padding:10px 8px;text-align:center;color:#a855f7;font-weight:700">${grandQp||'—'}</td>
+            <td style="padding:10px 8px;text-align:center;color:#14b8a6;font-weight:700">${grandSets||'—'}</td>
+            <td style="padding:10px 8px;text-align:center;color:#f59e0b;font-weight:700">${grandSits||'—'}</td>
+            <td style="padding:10px 8px;text-align:center;color:#22c55e;font-weight:700">${grandCloses||'—'}</td>
+            <td style="padding:10px 8px;text-align:center;color:#ef4444;font-weight:700">${grandFails||'—'}</td>
+            <td style="padding:10px 8px;text-align:center;color:var(--text1);font-weight:700;font-size:12px">${grandSetRate}</td>
+            <td style="padding:10px 8px;text-align:center;color:var(--text1);font-weight:700;font-size:12px">${grandCloseRate}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
+}
+
 /* ---- Weeks ---- */
 function renderWeeks() {
   const mo = getMonth(currentMonth);
