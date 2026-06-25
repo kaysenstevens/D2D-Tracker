@@ -2632,21 +2632,49 @@ function dateStr(date) {
 
 function applyLeadFilters(leads) {
   return leads.filter(l => {
-    // interest
     if (fuInterestFilter !== 'all') {
       const iv = (l.interest || '').toLowerCase();
       if (fuInterestFilter === 'hot' && !iv.includes('hot')) return false;
       if (fuInterestFilter === 'warm' && !iv.includes('warm')) return false;
       if (fuInterestFilter === 'cold' && !iv.includes('cold')) return false;
     }
-    // urgency
     if (fuUrgencyFilter !== 'all') {
       const d = l.followUpDate ? daysUntil(l.followUpDate) : null;
       if (fuUrgencyFilter === 'overdue' && (d === null || d >= 0)) return false;
       if (fuUrgencyFilter === 'week' && (d === null || d < 0 || d > 7)) return false;
       if (fuUrgencyFilter === 'upcoming' && (d === null || d < 0)) return false;
     }
+    if (fuSearch) {
+      const hay = [l.name, l.city, l.phone, l.address, l.notes].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(fuSearch)) return false;
+    }
     return true;
+  });
+}
+
+function sortLeads(leads) {
+  const interestOrder = { 'hot': 0, 'warm': 1, 'cold': 2 };
+  return leads.slice().sort((a, b) => {
+    switch (fuSort) {
+      case 'interest-high': return (interestOrder[(a.interest||'').toLowerCase()] ?? 3) - (interestOrder[(b.interest||'').toLowerCase()] ?? 3);
+      case 'interest-low':  return (interestOrder[(b.interest||'').toLowerCase()] ?? 3) - (interestOrder[(a.interest||'').toLowerCase()] ?? 3);
+      case 'contacted-recent': {
+        const la = a.contactLog?.[0]?.date || '0';
+        const lb = b.contactLog?.[0]?.date || '0';
+        return lb.localeCompare(la);
+      }
+      case 'contacted-old': {
+        const la = a.contactLog?.[0]?.date || '9';
+        const lb = b.contactLog?.[0]?.date || '9';
+        return la.localeCompare(lb);
+      }
+      case 'name': return (a.name||'').localeCompare(b.name||'');
+      default: { // date
+        const da = a.followUpDate ? daysUntil(a.followUpDate) : 9999;
+        const db = b.followUpDate ? daysUntil(b.followUpDate) : 9999;
+        return da - db;
+      }
+    }
   });
 }
 
