@@ -1173,22 +1173,27 @@ const KAYSEN_WEEKS = {
   ],
 };
 
-function load() {
-  try { state = JSON.parse(localStorage.getItem('d2d_v3')) || { months: {} }; } catch(e) { state = { months: {} }; }
+function applySeeds(saveAfter) {
+  if (!state.months) state.months = {};
   if (!state.leads || state.leads.length === 0) {
     state.leads = SEED_DATA.leads;
     state.events = SEED_DATA.events;
   }
-  // Seed weekly stats if missing
-  let seededWeeks = false;
+  let seeded = false;
   Object.entries(KAYSEN_WEEKS).forEach(([month, weeks]) => {
     if (!state.months[month]) state.months[month] = { weeks: [], appointments: [] };
     if (!state.months[month].weeks || state.months[month].weeks.length === 0) {
       state.months[month].weeks = weeks;
-      seededWeeks = true;
+      seeded = true;
     }
   });
-  if (!state.leads || state.leads.length === 0 || seededWeeks) save();
+  if (saveAfter && seeded) save();
+  return seeded;
+}
+
+function load() {
+  try { state = JSON.parse(localStorage.getItem('d2d_v3')) || { months: {} }; } catch(e) { state = { months: {} }; }
+  applySeeds(true);
 }
 
 function monthName(m) {
