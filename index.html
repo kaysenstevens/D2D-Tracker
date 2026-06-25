@@ -3257,7 +3257,9 @@ function startRealtimeSync() {
     if (doc.exists && doc.data().state) {
       const remote = JSON.parse(doc.data().state);
       state = remote;
-      localStorage.setItem('d2d_v3', doc.data().state);
+      const seeded = applySeeds(false);
+      if (seeded) { save(); }
+      localStorage.setItem('d2d_v3', JSON.stringify(state));
       renderAll();
       toast('Data loaded from cloud ☁️');
     } else {
