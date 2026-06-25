@@ -3474,7 +3474,7 @@ function saveObjEntry() {
   if (!state.objections) state.objections = [];
   state.objections.unshift({
     type: currentObjType,
-    stage: document.getElementById('obj-stage').value,
+    stage: '',
     description: desc,
     date: new Date().toISOString().slice(0,10),
     createdAt: new Date().toISOString(),
