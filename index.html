@@ -1404,6 +1404,81 @@ function renderDashboard() {
   `).join('');
 }
 
+/* ---- Week-over-week trends ---- */
+function renderTrends() {
+  const mo = getMonth(currentMonth);
+  const weeks = mo.weeks;
+  const el = document.getElementById('dash-trends');
+  const panel = document.getElementById('dash-trends-panel');
+  if (!el) return;
+
+  if (weeks.length < 2) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+
+  const METRICS = [
+    { key: 'dk',     label: 'Doors Knocked',     good: 'up' },
+    { key: 'qp',     label: 'Qualified Pitches',  good: 'up' },
+    { key: 'sets',   label: 'Sets',               good: 'up' },
+    { key: 'sits',   label: 'Sits',               good: 'up' },
+    { key: 'closes', label: 'Closes',             good: 'up' },
+    { key: 'fails',  label: 'Fails',              good: 'down' },
+  ];
+
+  // Last two weeks
+  const prev = weeks[weeks.length - 2];
+  const curr = weeks[weeks.length - 1];
+  const sumDays = (wk, key) => (wk.days || []).reduce((a, d) => a + (Number(d[key]) || 0), 0);
+
+  const cards = METRICS.map(m => {
+    const c = sumDays(curr, m.key);
+    const p = sumDays(prev, m.key);
+    const diff = c - p;
+    const pct = p > 0 ? Math.round((diff / p) * 100) : null;
+    const isUp = diff > 0;
+    const isGood = (m.good === 'up' && isUp) || (m.good === 'down' && !isUp && diff !== 0);
+    const isBad = (m.good === 'up' && diff < 0) || (m.good === 'down' && diff > 0);
+    const deltaClass = diff === 0 ? 'neutral' : isGood ? 'up' : 'down';
+    const cardClass = diff === 0 ? '' : isBad ? 'alert' : 'positive';
+    const arrow = diff === 0 ? '—' : diff > 0 ? '▲' : '▼';
+    const deltaStr = diff === 0 ? 'No change' : `${arrow} ${Math.abs(diff)}${pct !== null ? ` (${Math.abs(pct)}%)` : ''}`;
+    return `<div class="trend-card ${cardClass}">
+      <div class="trend-label">${m.label}</div>
+      <div class="trend-val">${c}</div>
+      <div class="trend-delta ${deltaClass}">${deltaStr} vs last week</div>
+    </div>`;
+  }).join('');
+
+  // Generate insights
+  const insights = [];
+  METRICS.forEach(m => {
+    const c = sumDays(curr, m.key);
+    const p = sumDays(prev, m.key);
+    const diff = c - p;
+    const pct = p > 0 ? Math.round((diff / p) * 100) : null;
+    if (pct === null || diff === 0) return;
+    const isBad = (m.good === 'up' && diff < 0) || (m.good === 'down' && diff > 0);
+    if (!isBad || Math.abs(pct) < 20) return;
+    const messages = {
+      dk:     `Doors knocked dropped ${Math.abs(pct)}% from last week (${p} → ${c}). Less time in the field usually means less pipeline — try to protect your door-knocking hours.`,
+      qp:     `Qualified pitches fell ${Math.abs(pct)}% (${p} → ${c}). You're getting fewer people to engage — could be the area, the opener, or just bad luck. Try a different approach or neighborhood.`,
+      sets:   `Sets are down ${Math.abs(pct)}% (${p} → ${c}). If pitches are holding steady, the issue is likely in the close of the door — work on getting commitments before leaving.`,
+      sits:   `Sits dropped ${Math.abs(pct)}% (${p} → ${c}). High no-show rate could mean you're not setting urgency or the appointment isn't real enough. Try confirming the day before.`,
+      closes: `Closes fell ${Math.abs(pct)}% (${p} → ${c}). If sits are holding, the issue is in the room — review your QA scores for patterns this week.`,
+      fails:  `Fails are up ${Math.abs(pct)}% (${p} → ${c}). More sits that don't close — could be low-quality leads, a shift in objection patterns, or energy in the room. Check your quality scores.`,
+    };
+    if (messages[m.key]) insights.push(messages[m.key]);
+  });
+
+  el.innerHTML = `
+    <div class="trend-grid">${cards}</div>
+    ${insights.length ? `<div class="trend-insight"><b style="color:var(--text)">🔍 Heads up:</b> ${insights.join(' · ')}</div>` : ''}
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">Comparing <b style="color:var(--text2)">${curr.range || 'current week'}</b> vs <b style="color:var(--text2)">${prev.range || 'previous week'}</b></div>
+  `;
+}
+
 /* ---- Weeks ---- */
 function renderWeeks() {
   const mo = getMonth(currentMonth);
