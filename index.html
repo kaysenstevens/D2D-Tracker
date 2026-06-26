@@ -2416,21 +2416,25 @@ const PIN_TYPES = [
   { key:'DQ75', label:'DQ75',  desc:'Doesn\'t qualify — too old (75+)', color:'#7c3aed', group:'dq' },
 ];
 
-// Map common CSV column names → our pin keys (case-insensitive prefix match)
+// Map common CSV column names → our pin keys (case-insensitive)
 const PIN_CSV_ALIASES = {
-  'na1':'NA1','na 1':'NA1','not home 1':'NA1',
-  'na2':'NA2','na 2':'NA2','not home 2':'NA2',
+  'na1':'NA1','na 1':'NA1','not home 1':'NA1','pin: no answer (all)':'NA1','no answer (all)':'NA1','no answer':'NA1',
+  'na2':'NA2','na 2':'NA2','not home 2':'NA2','pin: not home':'NA2','not home':'NA2',
   'na3':'NA3','na 3':'NA3','not home 3':'NA3',
   'np':'NP','no pitch':'NP',
-  'p-no':'P-NO','pno':'P-NO','pitched no':'P-NO','pitched - no':'P-NO',
-  'gb':'GB','go back':'GB','grab bill':'GB',
-  'appt':'Appt','appointment':'Appt','set':'Appt',
-  'solr':'SOLR','solar':'SOLR','has solar':'SOLR','already solar':'SOLR',
-  'dqc':'DQC','low bill':'DQC','doesnt qualify cost':'DQC',
-  'dqs':'DQS','no sun':'DQS',
-  'dqr':'DQR','renter':'DQR','moving':'DQR',
-  'dq75':'DQ75','too old':'DQ75','75':'DQ75',
+  'p-no':'P-NO','pno':'P-NO','pitched no':'P-NO','pitched - no':'P-NO','no pitched- no':'P-NO','pin: no pitched- no':'P-NO','pin: no pitched-no':'P-NO','no pitched-no':'P-NO',
+  'gb':'GB','go back':'GB','grab bill':'GB','pin: go back':'GB',
+  'appt':'Appt','appointment':'Appt','appointments set':'Appt','pin: appointments set':'Appt',
+  'solr':'SOLR','solar':'SOLR','has solar':'SOLR','already solar':'SOLR','pin: solar':'SOLR',
+  'dqc':'DQC','low bill':'DQC','pin: does not qualify credit':'DQC','does not qualify credit':'DQC','doesnt qualify credit':'DQC',
+  'dqs':'DQS','no sun':'DQS','pin: does not qualify shade':'DQS','does not qualify shade':'DQS','doesnt qualify shade':'DQS',
+  'dqr':'DQR','renter':'DQR','moving':'DQR','pin: does not qualify renter':'DQR','does not qualify renter':'DQR','doesnt qualify renter':'DQR',
+  'dq75':'DQ75','too old':'DQ75','pin: does not qualify 75+':'DQ75','does not qualify 75+':'DQ75','75+':'DQ75',
 };
+
+// Column order in D2D Pin Data export (indices 0-14)
+// Total Pins | DK | Doors Opened | QP | No Pitch | No Pitched-NO | No Answer(all) | Not Home | Go Back | Solar | DQR | DQC | DQS | DQ75 | Appts
+const D2D_EXPORT_COL_ORDER = [null, null, null, null, 'NP', 'P-NO', 'NA1', 'NA2', 'GB', 'SOLR', 'DQR', 'DQC', 'DQS', 'DQ75', 'Appt'];
 
 let pinModalContext = { monthKey: null, wi: null };
 let pinActiveTab = 'csv';
