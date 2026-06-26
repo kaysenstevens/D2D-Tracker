@@ -820,28 +820,62 @@
 
     <!-- Team Import Modal -->
     <div id="team-import-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeTeamImportModal()">
-      <div class="modal-box" style="max-width:520px">
+      <div class="modal-box" style="max-width:540px">
         <div class="modal-header">
           <h2>Import Team Stats</h2>
           <button class="modal-close" onclick="closeTeamImportModal()"><i class="ti ti-x"></i></button>
         </div>
+        <div style="padding:16px 20px 0">
+          <!-- Tabs -->
+          <div style="display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:4px">
+            <button id="tim-tab-team"   onclick="switchTimTab('team')"   style="flex:1;padding:7px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;background:var(--accent);color:#fff">Full Team CSV</button>
+            <button id="tim-tab-single" onclick="switchTimTab('single')" style="flex:1;padding:7px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--text-muted)">Single Rep CSV</button>
+            <button id="tim-tab-manual" onclick="switchTimTab('manual')" style="flex:1;padding:7px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--text-muted)">Manual</button>
+          </div>
+        </div>
         <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
-          <div>
-            <label class="form-label">Rep</label>
-            <select id="tim-rep" class="form-input">
-              <option value="tyson-elkins">Tyson Elkins</option>
-              <option value="brooke-dignault">Brooke Dignault</option>
-              <option value="kevin-rahman">Kevin Rahman</option>
-            </select>
+
+          <!-- Full Team CSV tab -->
+          <div id="tim-panel-team">
+            <label class="form-label">Upload Full Team RepCard CSV</label>
+            <input type="file" id="tim-team-csv" accept=".csv" class="form-input" onchange="handleFullTeamCSV(this)">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">One export with all reps — grouped by the User/Name column automatically</div>
+            <div>
+              <label class="form-label" style="margin-top:12px">Week label</label>
+              <input type="text" id="tim-team-week" class="form-input" placeholder="e.g. Jun 15–21">
+            </div>
+            <div id="tim-team-preview" style="display:none;margin-top:12px;background:var(--surface2);border-radius:8px;padding:12px;font-size:12px"></div>
           </div>
-          <div>
-            <label class="form-label">RepCard CSV</label>
-            <input type="file" id="tim-csv" accept=".csv" class="form-input" onchange="handleTeamCSV(this)">
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Exports from RepCard with Doors Knocked, Sets, Sits, Closes columns</div>
+
+          <!-- Single Rep CSV tab -->
+          <div id="tim-panel-single" style="display:none">
+            <div>
+              <label class="form-label">Rep</label>
+              <select id="tim-rep" class="form-input">
+                <option value="tyson-elkins">Tyson Elkins</option>
+                <option value="brooke-dignault">Brooke Dignault</option>
+                <option value="kevin-rahman">Kevin Rahman</option>
+              </select>
+            </div>
+            <div style="margin-top:12px">
+              <label class="form-label">RepCard CSV</label>
+              <input type="file" id="tim-csv" accept=".csv" class="form-input" onchange="handleTeamCSV(this)">
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Will filter rows matching this rep's name</div>
+            </div>
+            <div id="tim-csv-preview" style="display:none;margin-top:12px;background:var(--surface2);border-radius:8px;padding:12px;font-size:12px;max-height:160px;overflow-y:auto"></div>
           </div>
-          <div>
-            <label class="form-label">Or enter stats manually</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+
+          <!-- Manual tab -->
+          <div id="tim-panel-manual" style="display:none">
+            <div>
+              <label class="form-label">Rep</label>
+              <select id="tim-rep-manual" class="form-input">
+                <option value="tyson-elkins">Tyson Elkins</option>
+                <option value="brooke-dignault">Brooke Dignault</option>
+                <option value="kevin-rahman">Kevin Rahman</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
               <div>
                 <label class="form-label" style="font-size:11px">Week</label>
                 <input type="text" id="tim-week" class="form-input" placeholder="e.g. Jun 15–21">
@@ -868,8 +902,7 @@
               </div>
             </div>
           </div>
-          <div id="tim-csv-preview" style="display:none;background:var(--surface2);border-radius:8px;padding:12px;font-size:12px;max-height:160px;overflow-y:auto"></div>
-          <div id="tim-screenshot-preview" style="display:none"></div>
+
           <div style="display:flex;gap:8px;justify-content:flex-end">
             <button class="btn btn-ghost" onclick="closeTeamImportModal()">Cancel</button>
             <button class="btn btn-primary" onclick="saveTeamStats()"><i class="ti ti-check"></i> Save</button>
