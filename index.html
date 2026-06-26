@@ -4120,7 +4120,9 @@ function startRealtimeSync() {
     if (remoteStr !== localStr) {
       state = JSON.parse(remoteStr);
       const seeded = applySeeds(false);
+      syncDealsToCloses();
       localStorage.setItem('d2d_v3', JSON.stringify(state));
+      save();
       renderAll();
       if (seeded) pushToCloud();
     }
