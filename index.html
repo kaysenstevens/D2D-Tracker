@@ -1768,10 +1768,40 @@ function renderGoalTracker() {
       </div>
     </div>`;
 
+  // Focus mode: just the daily/weekly targets + timebar
+  const focusView = `
+    ${timebar}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px">
+      <div style="background:var(--surface2);border-radius:12px;padding:16px 12px;text-align:center;border:1px solid #3b82f633">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Doors today</div>
+        <div style="font-size:36px;font-weight:800;color:#3b82f6;line-height:1">${doorsPerDay || '—'}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">${dkRemaining} left total</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px 12px;text-align:center;border:1px solid #f59e0b33">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Sits this week</div>
+        <div style="font-size:36px;font-weight:800;color:#f59e0b;line-height:1">${sitsPerWeek || '—'}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">${sitsRemaining} left total</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px 12px;text-align:center;border:1px solid #22c55e33">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Closes/week</div>
+        <div style="font-size:36px;font-weight:800;color:#22c55e;line-height:1">${closesPerWeek || '—'}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">${Math.max(0,goalCloses-haveCloses)} left total</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:16px">Updates daily as the end date gets closer</div>
+    ${commissionCard}`;
+
+  // Progress mode: full funnel breakdown
+  const progressView = `
+    ${timebar}
+    ${commissionCard}
+    ${pacecards}
+    <div style="display:flex;flex-direction:column;gap:4px">${rows}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">Based on your all-time conversion rates · progress from Jun 25 forward</div>`;
+
   el.innerHTML = noData
     ? `<div class="empty"><i class="ti ti-info-circle"></i><p>Add weekly data first — conversion rates will be calculated from your history.</p></div>`
-    : timebar + commissionCard + pacecards + `<div style="display:flex;flex-direction:column;gap:4px">${rows}</div>
-       <div style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">Based on your all-time conversion rates · progress from Jun 25 forward</div>`;
+    : goalFocusMode ? focusView : progressView;
 }
 
 /* ---- All Months Summary ---- */
