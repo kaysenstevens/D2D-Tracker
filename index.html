@@ -2152,13 +2152,24 @@ function syncDealsToCloses() {
   }
 }
 
+function addBlankDeals(n) {
+  if (!state.deals) state.deals = [];
+  for (let i = 0; i < n; i++) {
+    state.deals.push({ name:'', date:'', amount:0, kw:0, ppw:0, status:'active', address:'', notes:'' });
+  }
+}
+
 function updateCellMonth(monthKey, wi, day, col, val) {
   const mo = state.months[monthKey];
   if (!mo || !mo.weeks[wi]) return;
   if (!mo.weeks[wi].days[day]) mo.weeks[wi].days[day] = {};
+  const oldVal = Number(mo.weeks[wi].days[day][col]) || 0;
   mo.weeks[wi].days[day][col] = val === '' ? 0 : +val;
-  if (col === 'closes') syncDealsToCloses();
-  save(); renderDashboard(); if (col === 'closes') renderDeals();
+  if (col === 'closes') {
+    const delta = (mo.weeks[wi].days[day][col]) - oldVal;
+    if (delta > 0) { addBlankDeals(delta); renderDeals(); }
+  }
+  save(); renderDashboard();
 }
 
 function deleteWeekFromMonth(monthKey, wi) {
