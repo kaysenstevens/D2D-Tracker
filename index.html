@@ -1669,23 +1669,27 @@ function renderGoalTracker() {
     });
   });
 
-  // Progress since GOAL_START — include weeks from Jun/Jul/Aug 2026
-  // A week "counts" if its month is 2026-06, 2026-07, or 2026-08
+  // Progress since GOAL_START — doors/pitches/sets/sits from Jun/Jul/Aug weeks,
+  // but closes + commission earned come from the Deals page (source of truth)
   const GOAL_MONTHS = ['2026-06', '2026-07', '2026-08'];
-  let haveDk=0, haveQp=0, haveSets=0, haveSits=0, haveCloses=0;
+  let haveDk=0, haveQp=0, haveSets=0, haveSits=0;
   GOAL_MONTHS.forEach(m => {
     const mo = state.months[m];
     if (!mo) return;
     (mo.weeks || []).forEach(wk => {
       Object.values(wk.days || {}).forEach(d => {
-        haveDk    += Number(d.dk)     || 0;
-        haveQp    += Number(d.qp)     || 0;
-        haveSets  += Number(d.sets)   || 0;
-        haveSits  += Number(d.sits)   || 0;
-        haveCloses+= Number(d.closes) || 0;
+        haveDk   += Number(d.dk)   || 0;
+        haveQp   += Number(d.qp)   || 0;
+        haveSets += Number(d.sets) || 0;
+        haveSits += Number(d.sits) || 0;
       });
     });
   });
+  // Closes & earned commission from Deals page
+  const deals = getDeals();
+  const activeDeals = deals.filter(d => d.status !== 'cancelled' && (!d.date || d.date >= '2026-06-25'));
+  const haveCloses = activeDeals.length;
+  const haveEarned = activeDeals.reduce((a, d) => a + (Number(d.amount) || 0), 0);
 
   const goalCloses = Math.max(1, parseInt(document.getElementById('goal-closes-input')?.value) || 10);
   const closesLeft = Math.max(0, goalCloses - haveCloses);
