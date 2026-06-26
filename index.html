@@ -2394,6 +2394,200 @@ function deleteWeekFromMonth(monthKey, wi) {
   save(); renderAll();
 }
 
+/* ---- Pin Data ---- */
+const PIN_TYPES = [
+  { key:'NA1',  label:'NA1',   desc:'Not home / bad time (1st knock)',  color:'#64748b', group:'na' },
+  { key:'NA2',  label:'NA2',   desc:'Not home again (2nd knock)',        color:'#475569', group:'na' },
+  { key:'NA3',  label:'NA3',   desc:'Not home (3rd knock)',              color:'#334155', group:'na' },
+  { key:'NP',   label:'NP',    desc:'No pitch — shut down immediately',  color:'#b45309', group:'no' },
+  { key:'P-NO', label:'P-NO',  desc:'Pitched, engaged, still no',       color:'#dc2626', group:'no' },
+  { key:'GB',   label:'GB',    desc:'Go back — qualified, needs return', color:'var(--amber)', group:'warm' },
+  { key:'Appt', label:'Appt',  desc:'Appointment set',                   color:'var(--green)',  group:'win' },
+  { key:'SOLR', label:'SOLR',  desc:'Already has solar',                color:'#0ea5e9', group:'dq' },
+  { key:'DQC',  label:'DQC',   desc:'Doesn\'t qualify — low bill',      color:'#7c3aed', group:'dq' },
+  { key:'DQS',  label:'DQS',   desc:'Doesn\'t qualify — not enough sun',color:'#7c3aed', group:'dq' },
+  { key:'DQR',  label:'DQR',   desc:'Doesn\'t qualify — renter/moving', color:'#7c3aed', group:'dq' },
+  { key:'DQ75', label:'DQ75',  desc:'Doesn\'t qualify — too old (75+)', color:'#7c3aed', group:'dq' },
+];
+
+// Map common CSV column names → our pin keys (case-insensitive prefix match)
+const PIN_CSV_ALIASES = {
+  'na1':'NA1','na 1':'NA1','not home 1':'NA1',
+  'na2':'NA2','na 2':'NA2','not home 2':'NA2',
+  'na3':'NA3','na 3':'NA3','not home 3':'NA3',
+  'np':'NP','no pitch':'NP',
+  'p-no':'P-NO','pno':'P-NO','pitched no':'P-NO','pitched - no':'P-NO',
+  'gb':'GB','go back':'GB','grab bill':'GB',
+  'appt':'Appt','appointment':'Appt','set':'Appt',
+  'solr':'SOLR','solar':'SOLR','has solar':'SOLR','already solar':'SOLR',
+  'dqc':'DQC','low bill':'DQC','doesnt qualify cost':'DQC',
+  'dqs':'DQS','no sun':'DQS',
+  'dqr':'DQR','renter':'DQR','moving':'DQR',
+  'dq75':'DQ75','too old':'DQ75','75':'DQ75',
+};
+
+let pinModalContext = { monthKey: null, wi: null };
+let pinActiveTab = 'csv';
+let pinParsedData = {};
+
+function renderWeekPins(wk, wi, monthKey) {
+  const pins = wk.pins || {};
+  const total = PIN_TYPES.reduce((a, p) => a + (pins[p.key] || 0), 0);
+  const hasPins = total > 0;
+
+  const pinBadges = hasPins
+    ? PIN_TYPES.filter(p => pins[p.key] > 0).map(p =>
+        `<span style="font-size:11px;padding:2px 7px;border-radius:12px;background:var(--surface2);color:${p.color};font-weight:600">${p.label} <span style="color:var(--text2)">${pins[p.key]}</span></span>`
+      ).join('')
+    : '';
+
+  return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap" onclick="openPinModal('${monthKey}',${wi})">
+      <i class="ti ti-map-pin" style="font-size:12px"></i> ${hasPins ? 'Edit Pins' : 'Upload Pins'}
+    </button>
+    ${hasPins ? `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${pinBadges}</div>` : `<span style="font-size:12px;color:var(--text3)">No pin data yet</span>`}
+  </div>`;
+}
+
+function openPinModal(monthKey, wi) {
+  pinModalContext = { monthKey, wi };
+  pinParsedData = {};
+  const wk = state.months[monthKey]?.weeks[wi];
+  const pins = (wk && wk.pins) || {};
+
+  // populate inputs grid
+  const grid = document.getElementById('pin-inputs-grid');
+  grid.innerHTML = PIN_TYPES.map(p => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:8px 10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:${p.color}">${p.label}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.desc}">${p.desc}</div>
+      </div>
+      <input type="number" id="pin-input-${p.key.replace('-','_')}" min="0"
+        value="${pins[p.key] || ''}" placeholder="0"
+        style="width:52px;text-align:center;background:var(--surface3,var(--surface));border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:14px;font-weight:600;color:var(--text1)">
+    </div>
+  `).join('');
+
+  document.getElementById('pin-csv-file').value = '';
+  document.getElementById('pin-screenshot-file').value = '';
+  document.getElementById('pin-csv-preview').style.display = 'none';
+  document.getElementById('pin-screenshot-preview').style.display = 'none';
+  switchPinTab('csv');
+  document.getElementById('pin-modal').style.display = 'flex';
+}
+
+function closePinModal() {
+  document.getElementById('pin-modal').style.display = 'none';
+}
+
+function switchPinTab(tab) {
+  pinActiveTab = tab;
+  ['csv','screenshot','manual'].forEach(t => {
+    document.getElementById(`pin-panel-${t}`).style.display = t === tab ? '' : 'none';
+    const btn = document.getElementById(`pin-tab-${t}`);
+    btn.style.background = t === tab ? 'var(--accent)' : 'transparent';
+    btn.style.color      = t === tab ? '#fff' : 'var(--text-muted)';
+  });
+  // inputs always visible
+  document.getElementById('pin-inputs-grid').style.display = 'grid';
+}
+
+function handlePinCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = parseCSV(e.target.result);
+    if (!rows.length) { toast('CSV appears empty'); return; }
+
+    const found = {};
+    const keys = Object.keys(rows[0]);
+
+    // Strategy A: each column is a pin type, single summary row
+    const pinCols = keys.filter(k => {
+      const lower = k.toLowerCase().trim();
+      return PIN_CSV_ALIASES[lower] || PIN_TYPES.some(p => p.key.toLowerCase() === lower);
+    });
+
+    if (pinCols.length >= 3) {
+      // Sum all rows per pin column
+      pinCols.forEach(col => {
+        const pinKey = PIN_CSV_ALIASES[col.toLowerCase().trim()] ||
+          PIN_TYPES.find(p => p.key.toLowerCase() === col.toLowerCase().trim())?.key;
+        if (pinKey) {
+          found[pinKey] = rows.reduce((a, r) => a + (Number(r[col]) || 0), 0);
+        }
+      });
+    } else {
+      // Strategy B: two columns — "disposition" and "count"
+      const dispCol = keys.find(k => /disp|pin|type|status|result/i.test(k));
+      const cntCol  = keys.find(k => /count|total|qty|num|#/i.test(k));
+      if (dispCol) {
+        rows.forEach(r => {
+          const raw = (r[dispCol] || '').toLowerCase().trim();
+          const pinKey = PIN_CSV_ALIASES[raw] ||
+            PIN_TYPES.find(p => p.key.toLowerCase() === raw)?.key;
+          if (pinKey) {
+            found[pinKey] = (found[pinKey] || 0) + (cntCol ? (Number(r[cntCol]) || 1) : 1);
+          }
+        });
+      }
+    }
+
+    pinParsedData = found;
+
+    // Fill inputs
+    PIN_TYPES.forEach(p => {
+      const el = document.getElementById(`pin-input-${p.key.replace('-','_')}`);
+      if (el && found[p.key] != null) el.value = found[p.key];
+    });
+
+    const matched = Object.keys(found).length;
+    const preview = document.getElementById('pin-csv-preview');
+    preview.style.display = 'block';
+    preview.innerHTML = matched
+      ? `<div style="color:var(--green);margin-bottom:8px">✓ Matched ${matched} pin type${matched>1?'s':''} — counts filled below</div>` +
+        PIN_TYPES.filter(p => found[p.key] > 0).map(p =>
+          `<span style="margin-right:10px;font-size:11px"><b style="color:${p.color}">${p.label}</b> ${found[p.key]}</span>`
+        ).join('')
+      : `<div style="color:var(--amber)">⚠ Couldn't auto-match columns. Fill counts manually below.<br><span style="color:var(--text3);font-size:11px">Columns found: ${keys.join(', ')}</span></div>`;
+  };
+  reader.readAsText(file);
+}
+
+function handlePinScreenshot(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('pin-screenshot-img').src = e.target.result;
+    document.getElementById('pin-screenshot-preview').style.display = 'block';
+    // store for saving
+    pinParsedData._screenshot = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function savePinData() {
+  const { monthKey, wi } = pinModalContext;
+  const mo = state.months[monthKey];
+  if (!mo || !mo.weeks[wi]) return;
+
+  const pins = {};
+  PIN_TYPES.forEach(p => {
+    const el = document.getElementById(`pin-input-${p.key.replace('-','_')}`);
+    const v = el ? (Number(el.value) || 0) : 0;
+    if (v > 0) pins[p.key] = v;
+  });
+
+  if (pinParsedData._screenshot) pins._screenshot = pinParsedData._screenshot;
+  mo.weeks[wi].pins = pins;
+  save(); renderWeeks();
+  closePinModal();
+  toast('Pin data saved');
+}
+
 function weekTotalsFrom(wk) {
   if (wk.weeklyTotal) return { ...{dk:0,qp:0,sets:0,sits:0,closes:0,fails:0}, ...(wk.days.Week||{}) };
   const t = {dk:0,qp:0,sets:0,sits:0,closes:0,fails:0};
