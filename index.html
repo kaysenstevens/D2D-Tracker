@@ -4266,6 +4266,243 @@ function updateSyncUI() {
   }
 }
 
+/* ============================================================
+   MANAGER SECTION
+   ============================================================ */
+const TEAM_REPS = {
+  'tyson-elkins':   'Tyson Elkins',
+  'brooke-dignault':'Brooke Dignault',
+  'kevin-rahman':   'Kevin Rahman',
+};
+
+function ensureTeam() {
+  if (!state.team) state.team = {};
+  Object.keys(TEAM_REPS).forEach(id => {
+    if (!state.team[id]) state.team[id] = { name: TEAM_REPS[id], weeks: [] };
+  });
+}
+
+function renderManager() {
+  ensureTeam();
+  renderManagerLeaderboard();
+  renderManagerRepCards();
+}
+
+function repTotals(id) {
+  const rep = state.team[id];
+  const t = { dk:0, qp:0, sets:0, sits:0, closes:0 };
+  (rep.weeks || []).forEach(wk => {
+    t.dk     += Number(wk.dk)     || 0;
+    t.qp     += Number(wk.qp)     || 0;
+    t.sets   += Number(wk.sets)   || 0;
+    t.sits   += Number(wk.sits)   || 0;
+    t.closes += Number(wk.closes) || 0;
+  });
+  return t;
+}
+
+function renderManagerLeaderboard() {
+  const el = document.getElementById('manager-leaderboard');
+  if (!el) return;
+  const rows = Object.keys(TEAM_REPS).map(id => {
+    const t = repTotals(id);
+    const initials = TEAM_REPS[id].split(' ').map(w=>w[0]).join('');
+    return { id, name: TEAM_REPS[id], initials, ...t };
+  }).sort((a,b) => b.closes - a.closes);
+
+  const medal = ['🥇','🥈','🥉'];
+  el.innerHTML = `
+    <div style="margin-bottom:24px">
+      <h2 style="margin:0 0 12px;font-size:16px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em">Team Leaderboard</h2>
+      <div style="background:var(--surface2);border-radius:12px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:10px 16px;text-align:left;color:var(--text-muted);font-weight:500">#</th>
+              <th style="padding:10px 16px;text-align:left;color:var(--text-muted);font-weight:500">Rep</th>
+              <th style="padding:10px 16px;text-align:right;color:var(--text-muted);font-weight:500">DK</th>
+              <th style="padding:10px 16px;text-align:right;color:var(--text-muted);font-weight:500">Sets</th>
+              <th style="padding:10px 16px;text-align:right;color:var(--text-muted);font-weight:500">Sits</th>
+              <th style="padding:10px 16px;text-align:right;color:var(--text-muted);font-weight:500">Closes</th>
+              <th style="padding:10px 16px;text-align:right;color:var(--text-muted);font-weight:500">Close%</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r,i) => {
+              const pct = r.sits > 0 ? Math.round(r.closes/r.sits*100) : 0;
+              return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:12px 16px;font-size:18px">${medal[i]||i+1}</td>
+                <td style="padding:12px 16px;font-weight:600">${r.name}</td>
+                <td style="padding:12px 16px;text-align:right">${r.dk}</td>
+                <td style="padding:12px 16px;text-align:right">${r.sets}</td>
+                <td style="padding:12px 16px;text-align:right">${r.sits}</td>
+                <td style="padding:12px 16px;text-align:right;font-weight:700;color:var(--green)">${r.closes}</td>
+                <td style="padding:12px 16px;text-align:right;color:var(--text-muted)">${pct}%</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderManagerRepCards() {
+  const el = document.getElementById('manager-rep-cards');
+  if (!el) return;
+  el.innerHTML = Object.keys(TEAM_REPS).map(id => {
+    const rep   = state.team[id];
+    const t     = repTotals(id);
+    const weeks = (rep.weeks || []).slice().reverse();
+    const closePct = t.sits > 0 ? Math.round(t.closes/t.sits*100) : 0;
+    const setPct   = t.dk > 0   ? Math.round(t.sets/t.dk*100)    : 0;
+    return `
+      <div style="background:var(--surface2);border-radius:12px;padding:20px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px">
+              ${rep.name.split(' ').map(w=>w[0]).join('')}
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:16px">${rep.name}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${(rep.weeks||[]).length} week${(rep.weeks||[]).length!==1?'s':''} logged</div>
+            </div>
+          </div>
+          <button class="btn btn-ghost" style="font-size:12px" onclick="deleteRepData('${id}')"><i class="ti ti-trash"></i> Clear</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">
+          ${[['DK',t.dk,''],['Sets',t.sets,setPct+'%'],['Sits',t.sits,''],['Closes',t.closes,''],['Close%',closePct+'%','']].map(([label,val,sub])=>`
+            <div style="background:var(--surface3,var(--surface));border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:18px;font-weight:700;color:var(--accent)">${val}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${label}</div>
+              ${sub?`<div style="font-size:10px;color:var(--green)">${sub}</div>`:''}
+            </div>`).join('')}
+        </div>
+        ${weeks.length > 0 ? `
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">Weekly breakdown</div>
+        <div style="max-height:180px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:4px 8px;text-align:left;color:var(--text-muted)">Week</th>
+                <th style="padding:4px 8px;text-align:right;color:var(--text-muted)">DK</th>
+                <th style="padding:4px 8px;text-align:right;color:var(--text-muted)">Sets</th>
+                <th style="padding:4px 8px;text-align:right;color:var(--text-muted)">Sits</th>
+                <th style="padding:4px 8px;text-align:right;color:var(--text-muted)">Closes</th>
+                <th style="padding:4px 8px;text-align:right;color:var(--text-muted)"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${weeks.map((wk,i)=>`
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:4px 8px">${wk.label||'Week '+(weeks.length-i)}</td>
+                  <td style="padding:4px 8px;text-align:right">${wk.dk||0}</td>
+                  <td style="padding:4px 8px;text-align:right">${wk.sets||0}</td>
+                  <td style="padding:4px 8px;text-align:right">${wk.sits||0}</td>
+                  <td style="padding:4px 8px;text-align:right;font-weight:700;color:var(--green)">${wk.closes||0}</td>
+                  <td style="padding:4px 8px;text-align:right">
+                    <button onclick="deleteRepWeek('${id}',${weeks.length-1-i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px">✕</button>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : `<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px 0">No stats yet — import a CSV or add manually</div>`}
+      </div>`;
+  }).join('');
+}
+
+function openTeamImportModal() {
+  document.getElementById('team-import-modal').style.display = 'flex';
+  document.getElementById('tim-csv-preview').style.display = 'none';
+  document.getElementById('tim-csv').value = '';
+  ['tim-week','tim-dk','tim-sets','tim-sits','tim-closes','tim-qp'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+function closeTeamImportModal() {
+  document.getElementById('team-import-modal').style.display = 'none';
+}
+
+function handleTeamCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = parseCSV(e.target.result);
+    const repId  = document.getElementById('tim-rep').value;
+    const repName = TEAM_REPS[repId] || '';
+    // Filter rows matching this rep
+    const userCol = rows[0] ? Object.keys(rows[0]).find(k => k.toLowerCase().includes('user') || k.toLowerCase().includes('name')) : null;
+    const filtered = userCol
+      ? rows.filter(r => (r[userCol]||'').toLowerCase().includes(repName.split(' ')[0].toLowerCase()))
+      : rows;
+
+    const colMap = key => {
+      const r = filtered[0];
+      if (!r) return null;
+      return Object.keys(r).find(k => k.toLowerCase().includes(key));
+    };
+    const dkCol     = colMap('door');
+    const qpCol     = colMap('qual');
+    const setsCol   = colMap('appoint') || colMap('set');
+    const sitsCol   = colMap('sat') || colMap('sit');
+    const closesCol = colMap('clos');
+
+    const totals = { dk:0, qp:0, sets:0, sits:0, closes:0 };
+    filtered.forEach(r => {
+      totals.dk     += Number(r[dkCol])     || 0;
+      totals.qp     += Number(r[qpCol])     || 0;
+      totals.sets   += Number(r[setsCol])   || 0;
+      totals.sits   += Number(r[sitsCol])   || 0;
+      totals.closes += Number(r[closesCol]) || 0;
+    });
+
+    document.getElementById('tim-dk').value     = totals.dk;
+    document.getElementById('tim-qp').value     = totals.qp;
+    document.getElementById('tim-sets').value   = totals.sets;
+    document.getElementById('tim-sits').value   = totals.sits;
+    document.getElementById('tim-closes').value = totals.closes;
+
+    const preview = document.getElementById('tim-csv-preview');
+    preview.style.display = 'block';
+    preview.innerHTML = `<div style="color:var(--green);margin-bottom:6px">✓ Parsed ${filtered.length} row(s) for ${repName}</div>
+      <div>DK: <b>${totals.dk}</b> &nbsp; QP: <b>${totals.qp}</b> &nbsp; Sets: <b>${totals.sets}</b> &nbsp; Sits: <b>${totals.sits}</b> &nbsp; Closes: <b>${totals.closes}</b></div>`;
+  };
+  reader.readAsText(file);
+}
+
+function saveTeamStats() {
+  ensureTeam();
+  const repId   = document.getElementById('tim-rep').value;
+  const label   = document.getElementById('tim-week').value.trim() || new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const dk      = Number(document.getElementById('tim-dk').value)     || 0;
+  const qp      = Number(document.getElementById('tim-qp').value)     || 0;
+  const sets    = Number(document.getElementById('tim-sets').value)   || 0;
+  const sits    = Number(document.getElementById('tim-sits').value)   || 0;
+  const closes  = Number(document.getElementById('tim-closes').value) || 0;
+
+  state.team[repId].weeks.push({ label, dk, qp, sets, sits, closes, added: new Date().toISOString() });
+  save();
+  renderManager();
+  closeTeamImportModal();
+  toast(`Stats saved for ${TEAM_REPS[repId]}`);
+}
+
+function deleteRepData(id) {
+  if (!confirm(`Clear all stats for ${TEAM_REPS[id]}?`)) return;
+  state.team[id].weeks = [];
+  save();
+  renderManager();
+}
+
+function deleteRepWeek(id, idx) {
+  state.team[id].weeks.splice(idx, 1);
+  save();
+  renderManager();
+}
+
+/* ============================================================ */
+
 function openSyncModal() {
   document.getElementById('sync-modal').style.display = 'flex';
   renderSyncModal();
