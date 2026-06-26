@@ -2200,11 +2200,10 @@ function renderWeekRatios(wk) {
 function updateCell(wi, day, col, val) {
   const mo = getMonth(currentMonth);
   if (!mo.weeks[wi].days[day]) mo.weeks[wi].days[day] = {};
+  const oldVal = col === 'closes' ? (Number(mo.weeks[wi].days[day].closes) || 0) : 0;
   mo.weeks[wi].days[day][col] = val === '' ? 0 : +val;
   if (col === 'closes') {
-    const oldVal = Number(mo2?.weeks[wi]?.days[day]?.closes) || 0;
-    const newVal = mo.weeks[wi].days[day][col];
-    const delta = newVal - oldVal;
+    const delta = mo.weeks[wi].days[day][col] - oldVal;
     if (delta > 0) { addBlankDeals(delta); renderDeals(); }
   }
   save();
