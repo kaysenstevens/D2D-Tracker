@@ -1986,7 +1986,10 @@ function renderAppointments() {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         ${a.disposition ? `<span class="badge badge-${dc}">${a.disposition}</span>` : ''}
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="deleteAppt(${i})"><i class="ti ti-trash" style="font-size:12px"></i></button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editAppt(${i})"><i class="ti ti-pencil" style="font-size:12px"></i></button>
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="deleteAppt(${i})"><i class="ti ti-trash" style="font-size:12px"></i></button>
+        </div>
       </div>
     </div>`;
   }).join('');
