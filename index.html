@@ -1709,9 +1709,16 @@ function renderDashboard() {
   renderGoalTracker();
   if (dashAllMonthsOpen) renderAllMonths();
 
-  document.getElementById('dash-title').textContent = monthName(currentMonth);
-  document.getElementById('dash-subtitle').textContent =
-    `${mo.weeks.length} week${mo.weeks.length !== 1 ? 's' : ''} · ${mo.appointments.length} appointment${mo.appointments.length !== 1 ? 's' : ''}`;
+  if (dashAllTime) {
+    const allWeeks = Object.values(state.months || {}).reduce((a, m) => a + (m.weeks||[]).length, 0);
+    const monthCount = Object.keys(state.months || {}).length;
+    document.getElementById('dash-title').textContent = 'All Time';
+    document.getElementById('dash-subtitle').textContent = `${monthCount} month${monthCount!==1?'s':''} · ${allWeeks} week${allWeeks!==1?'s':''}`;
+  } else {
+    document.getElementById('dash-title').textContent = monthName(currentMonth);
+    document.getElementById('dash-subtitle').textContent =
+      `${mo.weeks.length} week${mo.weeks.length !== 1 ? 's' : ''} · ${mo.appointments.length} appointment${mo.appointments.length !== 1 ? 's' : ''}`;
+  }
 
   const stats = [
     { label: 'Doors knocked', value: totals.dk, cls: 'blue', icon: 'ti-door' },
