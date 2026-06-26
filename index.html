@@ -1879,20 +1879,45 @@ function renderAllMonths() {
 }
 
 /* ---- Weeks ---- */
+const collapsedWeeks = new Set();
+
+function toggleWeek(key) {
+  if (collapsedWeeks.has(key)) collapsedWeeks.delete(key);
+  else collapsedWeeks.add(key);
+  renderWeeks();
+}
+
 function renderWeekTable(wk, wi, monthKey) {
+  const key = `${monthKey}-${wi}`;
+  const collapsed = collapsedWeeks.has(key);
+  const totals = COLS.map(col => DAYS.reduce((a, d) => a + (+((wk.days[d]||{})[col]||0)), 0));
+  const totalLabels = ['DK','QP','Sets','Sits','Closes','Fails'];
+  const totalColors = ['blue','purple','teal','amber','green','red'];
+
+  const summaryBadges = totals.map((v, i) => v > 0
+    ? `<span style="font-size:11px;color:var(--${totalColors[i]});font-weight:600">${totalLabels[i]}: ${v}</span>`
+    : '').filter(Boolean).join('<span style="color:var(--text3);margin:0 2px">·</span>');
+
   return `
-    <div class="panel week-section" style="margin-bottom:16px">
-      <div class="week-header">
-        <h3><span style="color:var(--text2)">${wk.area}</span> &nbsp;·&nbsp; ${wk.range}</h3>
+    <div class="panel week-section" style="margin-bottom:12px">
+      <div class="week-header" onclick="toggleWeek('${key}')" style="cursor:pointer;user-select:none">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+          <h3 style="margin:0"><span style="color:var(--text2)">${wk.area}</span> &nbsp;·&nbsp; ${wk.range}</h3>
+          ${collapsed && summaryBadges ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">${summaryBadges}</div>` : ''}
+        </div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="deleteWeekFromMonth('${monthKey}',${wi})"><i class="ti ti-trash" style="font-size:13px"></i></button>
+          <i class="ti ${collapsed ? 'ti-chevron-down' : 'ti-chevron-up'}" style="color:var(--text3);font-size:14px"></i>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();deleteWeekFromMonth('${monthKey}',${wi})">
+            <i class="ti ti-trash" style="font-size:13px"></i>
+          </button>
         </div>
       </div>
+      ${collapsed ? '' : `
       <div style="overflow-x:auto">
       <table>
         <thead>
           <tr>
-            <th style="width:90px"></th>
+            <th style="width:70px"></th>
             <th class="col-dk">DK</th>
             <th class="col-qp">QP</th>
             <th class="col-set">Sets</th>
@@ -1918,21 +1943,19 @@ function renderWeekTable(wk, wi, monthKey) {
         <tfoot>
           <tr class="tfoot-row">
             <td>Totals</td>
-            ${COLS.map(col => {
-              const sum = DAYS.reduce((a, d) => a + (+((wk.days[d]||{})[col]||0)), 0);
-              return `<td>${sum || 0}</td>`;
-            }).join('')}
+            ${totals.map(v => `<td>${v || 0}</td>`).join('')}
           </tr>
         </tfoot>
       </table>
       </div>
-      ${renderWeekRatios(wk)}
+      ${renderWeekRatios(wk)}`}
     </div>`;
 }
 
 function renderWeeks() {
   const cont = document.getElementById('weeks-content');
-  const allMonths = Object.keys(state.months || {}).sort().reverse();
+  // Sort months chronologically (oldest first)
+  const allMonths = Object.keys(state.months || {}).sort();
   const hasAny = allMonths.some(m => (state.months[m].weeks || []).length > 0);
 
   if (!hasAny) {
