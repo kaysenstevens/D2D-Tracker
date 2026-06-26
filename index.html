@@ -2566,15 +2566,109 @@ function handlePinCSV(input) {
   reader.readAsText(file);
 }
 
+function parsePinOCRText(text) {
+  const result = {};
+  // Normalize: collapse whitespace, remove pipes
+  const norm = text.replace(/\|/g, ' ').replace(/\r/g, '').replace(/[ \t]+/g, ' ');
+  const lines = norm.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Strategy A: find a line that's mostly numbers (the values row)
+  // In D2D export: headers on top rows, single data row at bottom
+  const numLine = lines.find(l => {
+    const nums = (l.match(/\b\d+\b/g) || []);
+    return nums.length >= 5;
+  });
+
+  if (numLine) {
+    const nums = (numLine.match(/\b\d+\b/g) || []).map(Number);
+    // Try to match known D2D column order
+    const headerText = lines.slice(0, lines.indexOf(numLine)).join(' ').toLowerCase();
+    if (headerText.includes('pin') || headerText.includes('pitch') || headerText.includes('knock')) {
+      // Looks like D2D export — use column order
+      D2D_EXPORT_COL_ORDER.forEach((pin, i) => {
+        if (pin && nums[i] != null) result[pin] = nums[i];
+      });
+      if (Object.keys(result).length >= 3) return result;
+    }
+  }
+
+  // Strategy B: keyword proximity — find each keyword then grab the next number
+  const fullText = norm.toLowerCase();
+  const keywordMap = [
+    { pattern: /no pitched[-\s]*no/,              pin: 'P-NO' },
+    { pattern: /no answer\s*\(all\)|no answer/,   pin: 'NA1' },
+    { pattern: /not home/,                         pin: 'NA2' },
+    { pattern: /na1\b/,                            pin: 'NA1' },
+    { pattern: /na2\b/,                            pin: 'NA2' },
+    { pattern: /na3\b/,                            pin: 'NA3' },
+    { pattern: /\bnp\b|no pitch(?!ed)/,            pin: 'NP' },
+    { pattern: /go back/,                          pin: 'GB' },
+    { pattern: /appointments?\s*set|appt\b/,       pin: 'Appt' },
+    { pattern: /\bsolar\b/,                        pin: 'SOLR' },
+    { pattern: /qualify renter|dqr\b/,             pin: 'DQR' },
+    { pattern: /qualify credit|dqc\b/,             pin: 'DQC' },
+    { pattern: /qualify shade|qualify sun|dqs\b/,  pin: 'DQS' },
+    { pattern: /qualify 75|dq75\b/,                pin: 'DQ75' },
+  ];
+
+  keywordMap.forEach(({ pattern, pin }) => {
+    if (result[pin] != null) return; // already found
+    const m = pattern.exec(fullText);
+    if (!m) return;
+    const after = fullText.substring(m.index + m[0].length, m.index + m[0].length + 60);
+    const numMatch = after.match(/\b(\d+)\b/);
+    if (numMatch) result[pin] = Number(numMatch[1]);
+  });
+
+  return result;
+}
+
+function fillPinInputs(found) {
+  PIN_TYPES.forEach(p => {
+    const el = document.getElementById(`pin-input-${p.key.replace('-','_')}`);
+    if (el && found[p.key] != null) el.value = found[p.key];
+  });
+}
+
 function handlePinScreenshot(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    document.getElementById('pin-screenshot-img').src = e.target.result;
+    const dataUrl = e.target.result;
+    document.getElementById('pin-screenshot-img').src = dataUrl;
     document.getElementById('pin-screenshot-preview').style.display = 'block';
-    // store for saving
-    pinParsedData._screenshot = e.target.result;
+    pinParsedData._screenshot = dataUrl;
+
+    // Show OCR status
+    const preview = document.getElementById('pin-csv-preview'); // reuse preview area
+    const ocrStatus = document.createElement('div');
+    ocrStatus.id = 'pin-ocr-status';
+    ocrStatus.style.cssText = 'margin-top:10px;padding:10px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2)';
+    ocrStatus.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Reading screenshot with OCR…';
+    const grid = document.getElementById('pin-inputs-grid');
+    const existing = document.getElementById('pin-ocr-status');
+    if (existing) existing.remove();
+    grid.parentNode.insertBefore(ocrStatus, grid);
+
+    if (typeof Tesseract === 'undefined') {
+      ocrStatus.innerHTML = '⚠ OCR library not loaded — fill counts manually below.';
+      return;
+    }
+
+    Tesseract.recognize(dataUrl, 'eng', { logger: () => {} }).then(({ data: { text } }) => {
+      const found = parsePinOCRText(text);
+      const count = Object.keys(found).filter(k => k !== '_screenshot').length;
+      if (count >= 3) {
+        fillPinInputs(found);
+        Object.assign(pinParsedData, found);
+        ocrStatus.innerHTML = `<span style="color:var(--green)">✓ OCR found ${count} pin types — counts filled below. Check and correct if needed.</span>`;
+      } else {
+        ocrStatus.innerHTML = `<span style="color:var(--amber)">⚠ OCR ran but couldn't confidently match pin columns. Fill counts manually below.</span><br><span style="color:var(--text3);font-size:10px">Raw text snippet: ${text.substring(0,200).replace(/\n/g,' ')}</span>`;
+      }
+    }).catch(err => {
+      ocrStatus.innerHTML = `<span style="color:var(--amber)">⚠ OCR failed — fill counts manually. (${err.message})</span>`;
+    });
   };
   reader.readAsDataURL(file);
 }
