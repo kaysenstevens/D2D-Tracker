@@ -2016,7 +2016,10 @@ function saveWeek() {
   save(); closeWeekModal(); renderAll(); toast('Week added');
 }
 
+let editingApptIndex = -1;
 function openApptModal() {
+  editingApptIndex = -1;
+  document.getElementById('appt-modal-title').textContent = 'Add appointment';
   document.getElementById('ap-name').value = '';
   document.getElementById('ap-date').value = new Date().toISOString().substring(0,10);
   document.getElementById('ap-address').value = '';
@@ -2027,11 +2030,27 @@ function openApptModal() {
   document.getElementById('ap-disp').value = '';
   document.getElementById('appt-modal').style.display = 'flex';
 }
+function editAppt(i) {
+  const a = getMonth(currentMonth).appointments[i];
+  if (!a) return;
+  editingApptIndex = i;
+  document.getElementById('appt-modal-title').textContent = 'Edit appointment';
+  document.getElementById('ap-name').value = a.name || '';
+  document.getElementById('ap-date').value = a.date || '';
+  document.getElementById('ap-address').value = a.address || '';
+  document.getElementById('ap-area').value = a.area || '';
+  document.getElementById('ap-both-spouses').checked = !!a.bothSpouses;
+  document.getElementById('ap-powerbill').checked = !!a.pb;
+  document.getElementById('ap-24h').checked = !!a.within24h;
+  document.getElementById('ap-disp').value = a.disposition || '';
+  document.getElementById('appt-modal').style.display = 'flex';
+}
 function closeApptModal() { document.getElementById('appt-modal').style.display = 'none'; }
 function saveAppt() {
   const name = document.getElementById('ap-name').value.trim();
   if (!name) { alert('Please enter a contact name.'); return; }
-  getMonth(currentMonth).appointments.push({
+  const appts = getMonth(currentMonth).appointments;
+  const data = {
     name,
     date: document.getElementById('ap-date').value,
     address: document.getElementById('ap-address').value.trim(),
@@ -2040,8 +2059,15 @@ function saveAppt() {
     pb: document.getElementById('ap-powerbill').checked,
     within24h: document.getElementById('ap-24h').checked,
     disposition: document.getElementById('ap-disp').value,
-  });
-  save(); closeApptModal(); renderAll(); toast('Appointment saved');
+  };
+  if (editingApptIndex >= 0) {
+    appts[editingApptIndex] = Object.assign({}, appts[editingApptIndex], data);
+    toast('Appointment updated');
+  } else {
+    appts.push(data);
+    toast('Appointment saved');
+  }
+  save(); closeApptModal(); renderAll();
 }
 
 function toast(msg) {
