@@ -2115,6 +2115,10 @@ function renderWeeks() {
   // Sort months chronologically (oldest first)
   const allMonths = Object.keys(state.months || {}).sort();
   const hasAny = allMonths.some(m => (state.months[m].weeks || []).length > 0);
+  // Auto-collapse all weeks that aren't already tracked
+  allMonths.forEach(m => {
+    (state.months[m].weeks || []).forEach((_, wi) => { collapsedWeeks.add(`${m}-${wi}`); });
+  });
 
   if (!hasAny) {
     cont.innerHTML = `<div class="panel"><div class="empty"><i class="ti ti-calendar-off"></i><p>No weeks yet. Add a week to start tracking.</p></div></div>`;
