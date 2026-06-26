@@ -1935,7 +1935,7 @@ function renderGoalTracker() {
   const timePct = Math.min(100, Math.round(daysElapsed / totalDays * 100));
   const endLabel = GOAL_END.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 
-  // All-time conversion rates
+  // All-time conversion rates (use full history for best rate estimates)
   let totalDk=0, totalQp=0, totalSets=0, totalSits=0, totalCloses=0;
   Object.values(state.months || {}).forEach(mo => {
     (mo.weeks || []).forEach(wk => {
@@ -1949,14 +1949,41 @@ function renderGoalTracker() {
     });
   });
 
-  // Progress since GOAL_START — doors/pitches/sets/sits from Jun/Jul/Aug weeks,
-  // but closes + commission earned come from the Deals page (source of truth)
-  const GOAL_MONTHS = ['2026-06', '2026-07', '2026-08'];
+  // Progress within goal date range only
+  // Filter months that overlap the goal start→end window
+  const goalStartMonth = startDateVal.substring(0, 7); // e.g. "2026-06"
+  const goalEndMonth   = endDateVal.substring(0, 7);   // e.g. "2026-08"
+
+  // Parse a week's range string ("Jun 14 – Jun 20") into an ISO end-date using the month's year
+  function weekEndDate(range, monthKey) {
+    try {
+      const year = monthKey.substring(0, 4);
+      const endPart = range.split('–').pop().trim(); // "Jun 20"
+      const d = new Date(`${endPart} ${year}`);
+      if (!isNaN(d)) return d.toISOString().substring(0, 10);
+    } catch(e) {}
+    return null;
+  }
+  function weekStartDate(range, monthKey) {
+    try {
+      const year = monthKey.substring(0, 4);
+      const startPart = range.split('–')[0].trim(); // "Jun 14"
+      const d = new Date(`${startPart} ${year}`);
+      if (!isNaN(d)) return d.toISOString().substring(0, 10);
+    } catch(e) {}
+    return null;
+  }
+
   let haveDk=0, haveQp=0, haveSets=0, haveSits=0;
-  GOAL_MONTHS.forEach(m => {
-    const mo = state.months[m];
-    if (!mo) return;
+  Object.entries(state.months || {}).forEach(([m, mo]) => {
+    if (m < goalStartMonth || m > goalEndMonth) return; // skip months outside range
     (mo.weeks || []).forEach(wk => {
+      // Only include weeks whose end date falls within the goal period
+      const wEnd   = weekEndDate(wk.range || '', m);
+      const wStart = weekStartDate(wk.range || '', m);
+      // Include if week overlaps the goal window (week end >= goal start AND week start <= goal end)
+      const inRange = (!wEnd || wEnd >= startDateVal) && (!wStart || wStart <= endDateVal);
+      if (!inRange) return;
       Object.values(wk.days || {}).forEach(d => {
         haveDk   += Number(d.dk)   || 0;
         haveQp   += Number(d.qp)   || 0;
