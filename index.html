@@ -1565,6 +1565,11 @@ function applySeeds(saveAfter) {
             seeded = true;
           }
         }
+        // Migrate missing pins from seed
+        if (!wk.pins) {
+          const seedMatch = weeks.find(s => s.range === wk.range && s.pins);
+          if (seedMatch) { wk.pins = seedMatch.pins; seeded = true; }
+        }
       });
     }
   });
