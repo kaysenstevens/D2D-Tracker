@@ -804,6 +804,80 @@
     </div>
 
     <!-- DEALS PAGE -->
+    <div id="page-manager" class="page">
+      <div class="main-header">
+        <div>
+          <h1>Manager</h1>
+          <div class="subtitle">Team stats for Tyson, Brooke &amp; Kevin</div>
+        </div>
+        <button class="btn btn-primary" onclick="openTeamImportModal()"><i class="ti ti-upload"></i> Import Stats</button>
+      </div>
+      <div class="content">
+        <div id="manager-leaderboard"></div>
+        <div id="manager-rep-cards"></div>
+      </div>
+    </div>
+
+    <!-- Team Import Modal -->
+    <div id="team-import-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeTeamImportModal()">
+      <div class="modal-box" style="max-width:520px">
+        <div class="modal-header">
+          <h2>Import Team Stats</h2>
+          <button class="modal-close" onclick="closeTeamImportModal()"><i class="ti ti-x"></i></button>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+          <div>
+            <label class="form-label">Rep</label>
+            <select id="tim-rep" class="form-input">
+              <option value="tyson-elkins">Tyson Elkins</option>
+              <option value="brooke-dignault">Brooke Dignault</option>
+              <option value="kevin-rahman">Kevin Rahman</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">RepCard CSV</label>
+            <input type="file" id="tim-csv" accept=".csv" class="form-input" onchange="handleTeamCSV(this)">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Exports from RepCard with Doors Knocked, Sets, Sits, Closes columns</div>
+          </div>
+          <div>
+            <label class="form-label">Or enter stats manually</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <label class="form-label" style="font-size:11px">Week</label>
+                <input type="text" id="tim-week" class="form-input" placeholder="e.g. Jun 15–21">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:11px">Doors Knocked</label>
+                <input type="number" id="tim-dk" class="form-input" placeholder="0">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:11px">Sets</label>
+                <input type="number" id="tim-sets" class="form-input" placeholder="0">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:11px">Sits</label>
+                <input type="number" id="tim-sits" class="form-input" placeholder="0">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:11px">Closes</label>
+                <input type="number" id="tim-closes" class="form-input" placeholder="0">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:11px">QP</label>
+                <input type="number" id="tim-qp" class="form-input" placeholder="0">
+              </div>
+            </div>
+          </div>
+          <div id="tim-csv-preview" style="display:none;background:var(--surface2);border-radius:8px;padding:12px;font-size:12px;max-height:160px;overflow-y:auto"></div>
+          <div id="tim-screenshot-preview" style="display:none"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost" onclick="closeTeamImportModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveTeamStats()"><i class="ti ti-check"></i> Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="page-deals" class="page">
       <div class="main-header">
         <div>
