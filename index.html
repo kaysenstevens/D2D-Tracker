@@ -2309,15 +2309,15 @@ function deleteWeekFromMonth(monthKey, wi) {
   save(); renderAll();
 }
 
+function weekTotalsFrom(wk) {
+  if (wk.weeklyTotal) return { ...{dk:0,qp:0,sets:0,sits:0,closes:0,fails:0}, ...(wk.days.Week||{}) };
+  const t = {dk:0,qp:0,sets:0,sits:0,closes:0,fails:0};
+  DAYS.forEach(d => { COLS.forEach(c => { t[c] += +((wk.days[d]||{})[c]||0); }); });
+  return t;
+}
+
 function renderWeekRatios(wk) {
-  let dk=0, qp=0, sets=0, sits=0, closes=0;
-  DAYS.forEach(d => {
-    dk += +((wk.days[d]||{}).dk||0);
-    qp += +((wk.days[d]||{}).qp||0);
-    sets += +((wk.days[d]||{}).sets||0);
-    sits += +((wk.days[d]||{}).sits||0);
-    closes += +((wk.days[d]||{}).closes||0);
-  });
+  const { dk, qp, sets, sits, closes } = weekTotalsFrom(wk);
   const dk2set = sets > 0 ? Math.round(dk/sets) + ':1' : '—';
   const set2sit = sets > 0 ? Math.round(sits/sets*100) + '%' : '—';
   const sit2close = sits > 0 ? Math.round(closes/sits*100) + '%' : '—';
