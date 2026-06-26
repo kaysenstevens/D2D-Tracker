@@ -2569,54 +2569,56 @@ function handlePinCSV(input) {
 
 function parsePinOCRText(text) {
   const result = {};
-  // Normalize: collapse whitespace, remove pipes
-  const norm = text.replace(/\|/g, ' ').replace(/\r/g, '').replace(/[ \t]+/g, ' ');
-  const lines = norm.split('\n').map(l => l.trim()).filter(Boolean);
+  const norm = text.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
 
-  // Strategy A: find a line that's mostly numbers (the values row)
-  // In D2D export: headers on top rows, single data row at bottom
-  const numLine = lines.find(l => {
-    const nums = (l.match(/\b\d+\b/g) || []);
-    return nums.length >= 5;
-  });
+  // --- Strategy A: D2D column-order matching ---
+  // The D2D Pin Data table has multi-line headers that OCR scrambles,
+  // but the data row is always a clean sequence of numbers in a fixed order.
+  // Strip date patterns (MM-DD-YYYY) so they don't pollute the number sequence.
+  const stripped = norm
+    .replace(/\b\d{1,2}-\d{1,2}-\d{2,4}\b/g, '')  // dates like 05-03-2026
+    .replace(/\b\d{4}\b/g, '');                      // 4-digit years
 
-  if (numLine) {
-    const nums = (numLine.match(/\b\d+\b/g) || []).map(Number);
-    // Try to match known D2D column order
-    const headerText = lines.slice(0, lines.indexOf(numLine)).join(' ').toLowerCase();
-    if (headerText.includes('pin') || headerText.includes('pitch') || headerText.includes('knock')) {
-      // Looks like D2D export — use column order
-      D2D_EXPORT_COL_ORDER.forEach((pin, i) => {
-        if (pin && nums[i] != null) result[pin] = nums[i];
+  const allNums = (stripped.match(/\b\d+\b/g) || []).map(Number);
+
+  // D2D data row always starts with Total Pins (largest), then DK (close to it).
+  // Scan for the start of that sequence.
+  for (let i = 0; i <= allNums.length - 10; i++) {
+    const seq = allNums.slice(i, i + D2D_EXPORT_COL_ORDER.length);
+    const totalPins = seq[0];
+    const dk        = seq[1];
+    // Sanity: total pins > DK, DK > 20, total < 2000
+    if (totalPins > dk && dk > 20 && totalPins < 2000) {
+      D2D_EXPORT_COL_ORDER.forEach((pin, idx) => {
+        if (pin && seq[idx] != null) result[pin] = seq[idx];
       });
-      if (Object.keys(result).length >= 3) return result;
+      if (Object.keys(result).length >= 4) return result;
     }
   }
 
-  // Strategy B: keyword proximity — find each keyword then grab the next number
-  const fullText = norm.toLowerCase();
+  // --- Strategy B: keyword → nearest number (handles non-D2D formats) ---
+  const lower = norm.toLowerCase();
   const keywordMap = [
-    { pattern: /no pitched[-\s]*no/,              pin: 'P-NO' },
-    { pattern: /no answer\s*\(all\)|no answer/,   pin: 'NA1' },
-    { pattern: /not home/,                         pin: 'NA2' },
-    { pattern: /na1\b/,                            pin: 'NA1' },
-    { pattern: /na2\b/,                            pin: 'NA2' },
-    { pattern: /na3\b/,                            pin: 'NA3' },
-    { pattern: /\bnp\b|no pitch(?!ed)/,            pin: 'NP' },
-    { pattern: /go back/,                          pin: 'GB' },
-    { pattern: /appointments?\s*set|appt\b/,       pin: 'Appt' },
-    { pattern: /\bsolar\b/,                        pin: 'SOLR' },
-    { pattern: /qualify renter|dqr\b/,             pin: 'DQR' },
-    { pattern: /qualify credit|dqc\b/,             pin: 'DQC' },
-    { pattern: /qualify shade|qualify sun|dqs\b/,  pin: 'DQS' },
-    { pattern: /qualify 75|dq75\b/,                pin: 'DQ75' },
+    { pattern: /no pitched[-\s]*no/,             pin: 'P-NO' },
+    { pattern: /no answer\s*\(all\)|no answer/,  pin: 'NA1'  },
+    { pattern: /not home/,                        pin: 'NA2'  },
+    { pattern: /\bna1\b/,                         pin: 'NA1'  },
+    { pattern: /\bna2\b/,                         pin: 'NA2'  },
+    { pattern: /\bna3\b/,                         pin: 'NA3'  },
+    { pattern: /\bnp\b|no pitch(?!ed)/,           pin: 'NP'   },
+    { pattern: /go back/,                         pin: 'GB'   },
+    { pattern: /appointments?\s*set|\bappt\b/,    pin: 'Appt' },
+    { pattern: /\bsolar\b/,                       pin: 'SOLR' },
+    { pattern: /qualify renter|\bdqr\b/,          pin: 'DQR'  },
+    { pattern: /qualify credit|\bdqc\b/,          pin: 'DQC'  },
+    { pattern: /qualify shade|qualify sun|\bdqs\b/, pin: 'DQS' },
+    { pattern: /qualify 75|\bdq75\b/,             pin: 'DQ75' },
   ];
-
   keywordMap.forEach(({ pattern, pin }) => {
-    if (result[pin] != null) return; // already found
-    const m = pattern.exec(fullText);
+    if (result[pin] != null) return;
+    const m = pattern.exec(lower);
     if (!m) return;
-    const after = fullText.substring(m.index + m[0].length, m.index + m[0].length + 60);
+    const after = lower.substring(m.index + m[0].length, m.index + m[0].length + 60);
     const numMatch = after.match(/\b(\d+)\b/);
     if (numMatch) result[pin] = Number(numMatch[1]);
   });
