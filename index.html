@@ -1606,6 +1606,11 @@ function initMonthPicker() {
   sels.forEach(sel => {
     if (!sel) return;
     sel.innerHTML = '';
+    // All Time option first
+    const allOpt = document.createElement('option');
+    allOpt.value = 'all-time';
+    allOpt.textContent = '⬡ All Time';
+    sel.appendChild(allOpt);
     for (let i = -3; i <= 3; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -1619,8 +1624,15 @@ function initMonthPicker() {
 }
 
 function changeMonth() {
-  currentMonth = document.getElementById('monthSelect').value;
-  renderAll();
+  const val = document.getElementById('monthSelect').value;
+  if (val === 'all-time') {
+    dashAllTime = true;
+    renderDashboard();
+  } else {
+    dashAllTime = false;
+    currentMonth = val;
+    renderAll();
+  }
 }
 
 function showPage(name, el) {
