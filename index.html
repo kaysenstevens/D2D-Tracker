@@ -1315,6 +1315,15 @@ function applySeeds(saveAfter) {
 function load() {
   try { state = JSON.parse(localStorage.getItem('d2d_v3')) || { months: {} }; } catch(e) { state = { months: {} }; }
   applySeeds(true);
+  // Pre-populate 3 blank deals if none exist yet
+  if (!state.deals || state.deals.length === 0) {
+    state.deals = [
+      { name: '', date: '', amount: 0, status: 'active', address: '', notes: '' },
+      { name: '', date: '', amount: 0, status: 'active', address: '', notes: '' },
+      { name: '', date: '', amount: 0, status: 'active', address: '', notes: '' },
+    ];
+    save();
+  }
 }
 
 function monthName(m) {
