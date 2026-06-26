@@ -1584,13 +1584,17 @@ function aggregateWeeks() {
   DAYS.forEach(d => { byDay[d] = { dk:0, qp:0, sets:0, sits:0, closes:0, fails:0 }; });
 
   mo.weeks.forEach(wk => {
-    DAYS.forEach(day => {
-      COLS.forEach(col => {
-        const v = +((wk.days[day] || {})[col] || 0);
-        totals[col] += v;
-        byDay[day][col] += v;
+    if (wk.weeklyTotal) {
+      COLS.forEach(col => { totals[col] += +((wk.days.Week || {})[col] || 0); });
+    } else {
+      DAYS.forEach(day => {
+        COLS.forEach(col => {
+          const v = +((wk.days[day] || {})[col] || 0);
+          totals[col] += v;
+          byDay[day][col] += v;
+        });
       });
-    });
+    }
   });
   return { totals, byDay };
 }
