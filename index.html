@@ -4136,11 +4136,12 @@ function startRealtimeSync() {
     if (remoteStr !== localStr) {
       state = JSON.parse(remoteStr);
       const seeded = applySeeds(false);
+      const dealsBefore2 = (state.deals || []).length;
       syncDealsToCloses();
+      const dealsAdded2 = (state.deals || []).length > dealsBefore2;
       localStorage.setItem('d2d_v3', JSON.stringify(state));
-      save();
       renderAll();
-      if (seeded) pushToCloud();
+      if (seeded || dealsAdded2) pushToCloud();
     }
   }, e => console.error('Sync listener error', e));
 }
