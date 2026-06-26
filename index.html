@@ -616,28 +616,36 @@
             <i class="ti ti-chevron-up" id="dash-goal-chevron"></i>
           </div>
           <div id="dash-goal-body">
-            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;align-items:center">
-              <label style="font-size:13px;color:var(--text2)">I want to close</label>
+            <!-- Row 1: closes + end date -->
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;align-items:center">
+              <label style="font-size:13px;color:var(--text2)">Close</label>
               <input id="goal-closes-input" type="number" min="1" value="10"
-                style="width:64px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:15px;font-weight:700;text-align:center"
+                style="width:60px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:15px;font-weight:700;text-align:center"
                 oninput="renderGoalTracker()">
-              <label style="font-size:13px;color:var(--text2)">deals by end of August</label>
+              <label style="font-size:13px;color:var(--text2)">deals by</label>
+              <input id="goal-end-date-input" type="date" value="2026-08-31"
+                style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:13px;font-weight:600"
+                oninput="renderGoalTracker()">
             </div>
-            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;align-items:center">
-              <label style="font-size:13px;color:var(--text2)">Avg commission</label>
-              <div style="display:flex;align-items:center;gap:4px">
-                <span style="font-size:14px;color:var(--text2)">$</span>
-                <input id="goal-commission-input" type="number" min="0" value="4500"
-                  style="width:80px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:15px;font-weight:700;text-align:center"
-                  oninput="renderGoalTracker()">
-              </div>
-              <label style="font-size:13px;color:var(--text2)">· Retention rate</label>
-              <div style="display:flex;align-items:center;gap:4px">
-                <input id="goal-retention-input" type="number" min="0" max="100" value="70"
-                  style="width:60px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:15px;font-weight:700;text-align:center"
-                  oninput="renderGoalTracker()">
-                <span style="font-size:14px;color:var(--text2)">%</span>
-              </div>
+            <!-- Row 2: commission + retention -->
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;align-items:center">
+              <label style="font-size:13px;color:var(--text2)">Avg commission $</label>
+              <input id="goal-commission-input" type="number" min="0" value="4500"
+                style="width:80px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:13px;font-weight:700;text-align:center"
+                oninput="renderGoalTracker()">
+              <label style="font-size:13px;color:var(--text2)">Retention</label>
+              <input id="goal-retention-input" type="number" min="0" max="100" value="70"
+                style="width:56px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:13px;font-weight:700;text-align:center"
+                oninput="renderGoalTracker()">
+              <span style="font-size:13px;color:var(--text2)">%</span>
+            </div>
+            <!-- Row 3: focus mode toggle -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+              <button id="goal-focus-btn" onclick="toggleGoalFocus()"
+                style="padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s">
+                <i class="ti ti-eye" style="margin-right:4px"></i>Show progress
+              </button>
+              <span style="font-size:12px;color:var(--text3)">Toggle to see full funnel vs daily targets only</span>
             </div>
             <div id="dash-goal-content"></div>
           </div>
