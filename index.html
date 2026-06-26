@@ -4115,9 +4115,11 @@ function startRealtimeSync() {
       const remote = JSON.parse(doc.data().state);
       state = remote;
       const seeded = applySeeds(false);
+      const dealsBefore = (state.deals || []).length;
       syncDealsToCloses();
+      const dealsAdded = (state.deals || []).length > dealsBefore;
       localStorage.setItem('d2d_v3', JSON.stringify(state));
-      save();
+      if (seeded || dealsAdded) pushToCloud();
       renderAll();
       toast('Data loaded from cloud ☁️');
     } else {
