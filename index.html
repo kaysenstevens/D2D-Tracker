@@ -1773,16 +1773,17 @@ function renderGoalTracker() {
       </div>
     </div>`;
 
-  // Commission projection
+  // Commission projection — earned comes from actual deal amounts, projected from avg commission
   const commissionPerDeal = Math.max(0, parseFloat(document.getElementById('goal-commission-input')?.value) || 4500);
   const retentionRate     = Math.max(0, Math.min(100, parseFloat(document.getElementById('goal-retention-input')?.value) || 70)) / 100;
   const fmt = n => '$' + Math.round(n).toLocaleString();
-  const grossGoal    = goalCloses * commissionPerDeal;
-  const netGoal      = goalCloses * commissionPerDeal * retentionRate;
-  const grossSoFar   = haveCloses * commissionPerDeal;
-  const netSoFar     = haveCloses * commissionPerDeal * retentionRate;
-  const grossRemain  = Math.max(0, goalCloses - haveCloses) * commissionPerDeal;
-  const netRemain    = Math.max(0, goalCloses - haveCloses) * commissionPerDeal * retentionRate;
+  const netGoal     = goalCloses * commissionPerDeal * retentionRate;
+  const grossGoal   = goalCloses * commissionPerDeal;
+  // Use actual deal amounts if entered, otherwise estimate from avg commission
+  const netSoFar    = haveEarned > 0 ? haveEarned : haveCloses * commissionPerDeal * retentionRate;
+  const grossSoFar  = haveEarned > 0 ? haveEarned / retentionRate : haveCloses * commissionPerDeal;
+  const netRemain   = Math.max(0, goalCloses - haveCloses) * commissionPerDeal * retentionRate;
+  const grossRemain = Math.max(0, goalCloses - haveCloses) * commissionPerDeal;
 
   const commissionCard = `
     <div style="background:linear-gradient(135deg,#1a2a1a,#0f2010);border:1px solid #22c55e44;border-radius:14px;padding:16px;margin-bottom:16px">
