@@ -2079,11 +2079,27 @@ function renderGoalTracker() {
   const netRemain   = Math.max(0, goalCloses - haveCloses) * commissionPerDeal * retentionRate;
   const grossRemain = Math.max(0, goalCloses - haveCloses) * commissionPerDeal;
 
+  const startLabel = GOAL_START_LOCAL.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const allSummerNet = allSummerEarned > 0 ? allSummerEarned : realDeals.length * commissionPerDeal * retentionRate;
+
   const commissionCard = `
     <div style="background:linear-gradient(135deg,#1a2a1a,#0f2010);border:1px solid #22c55e44;border-radius:14px;padding:16px;margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:#22c55e;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px">
-        <i class="ti ti-cash" style="margin-right:6px"></i>Commission Projection
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:12px;font-weight:700;color:#22c55e;letter-spacing:.5px;text-transform:uppercase">
+          <i class="ti ti-cash" style="margin-right:6px"></i>Commission ${commShowAll ? 'All Summer' : 'Goal Period'}
+        </div>
+        <button onclick="state.goalCommShowAll=!state.goalCommShowAll;renderGoalTracker()"
+          style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid #22c55e55;background:${commShowAll?'#22c55e22':'transparent'};color:${commShowAll?'#22c55e':'var(--text3)'};cursor:pointer">
+          ${commShowAll ? '⬡ All summer' : '◎ Goal period only'} — tap to switch
+        </button>
       </div>
+      ${commShowAll && allSummerEarned > netSoFar ? `
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;padding:6px 10px;background:#22c55e0f;border-radius:8px">
+          Showing all ${realDeals.length} deal${realDeals.length!==1?'s':''} · ${goalDeals.length} within goal period (${startLabel}–${endLabel})
+        </div>` : !commShowAll ? `
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;padding:6px 10px;background:#22c55e0f;border-radius:8px">
+          Only deals dated ${startLabel}–${endLabel} · ${realDeals.length - goalDeals.length > 0 ? `${realDeals.length - goalDeals.length} deal${realDeals.length-goalDeals.length!==1?'s':''} outside range excluded` : 'all deals are within range'}
+        </div>` : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
         <div style="text-align:center">
           <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Earned so far</div>
@@ -2096,9 +2112,9 @@ function renderGoalTracker() {
           <div style="font-size:10px;color:var(--text3)">${fmt(grossRemain)} gross · ${Math.max(0,goalCloses-haveCloses)} deal${Math.max(0,goalCloses-haveCloses)!==1?'s':''}</div>
         </div>
         <div style="text-align:center">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Goal total</div>
-          <div style="font-size:20px;font-weight:800;color:#4ade80">${fmt(netGoal)}</div>
-          <div style="font-size:10px;color:var(--text3)">${fmt(grossGoal)} gross · ${goalCloses} deals</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${commShowAll ? 'Summer total' : 'Goal total'}</div>
+          <div style="font-size:20px;font-weight:800;color:#4ade80">${commShowAll ? fmt(allSummerNet) : fmt(netGoal)}</div>
+          <div style="font-size:10px;color:var(--text3)">${commShowAll ? `${realDeals.length} deals total` : `${fmt(grossGoal)} gross · ${goalCloses} deals`}</div>
         </div>
       </div>
       <div style="background:#22c55e18;border-radius:99px;height:6px;overflow:hidden">
