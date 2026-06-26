@@ -1967,13 +1967,23 @@ function renderGoalTracker() {
   });
   // Closes & earned commission from Deals page
   const deals = getDeals();
-  // Only count deals with real data (exclude blank placeholders)
-  const activeDeals = deals.filter(d =>
+  const realDeals = deals.filter(d =>
     d.status !== 'cancelled' &&
     (d.name || (d.amount && d.amount > 0) || d.kw > 0)
   );
-  const haveCloses = activeDeals.length;
-  const haveEarned = activeDeals.reduce((a, d) => a + (Number(d.amount) || 0), 0);
+  // Goal-period deals: only those with a date within start→end
+  const startStr = startDateVal;
+  const endStr   = endDateVal;
+  const goalDeals = realDeals.filter(d => {
+    if (!d.date) return false;
+    return d.date >= startStr && d.date <= endStr;
+  });
+  // All-summer toggle
+  const commShowAll = state.goalCommShowAll || false;
+  const activeDeals  = commShowAll ? realDeals : goalDeals;
+  const haveCloses   = activeDeals.length;
+  const haveEarned   = activeDeals.reduce((a, d) => a + (Number(d.amount) || 0), 0);
+  const allSummerEarned = realDeals.reduce((a, d) => a + (Number(d.amount) || 0), 0);
 
   const goalCloses = Math.max(1, parseInt(document.getElementById('goal-closes-input')?.value) || 10);
   const closesLeft = Math.max(0, goalCloses - haveCloses);
