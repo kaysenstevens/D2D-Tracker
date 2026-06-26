@@ -4444,8 +4444,27 @@ function renderManagerRepCards() {
   }).join('');
 }
 
+let timActiveTab = 'team';
+let timFullTeamData = null; // parsed results from full team CSV
+
+function switchTimTab(tab) {
+  timActiveTab = tab;
+  ['team','single','manual'].forEach(t => {
+    document.getElementById(`tim-panel-${t}`).style.display = t === tab ? '' : 'none';
+    const btn = document.getElementById(`tim-tab-${t}`);
+    btn.style.background = t === tab ? 'var(--accent)' : 'transparent';
+    btn.style.color      = t === tab ? '#fff' : 'var(--text-muted)';
+  });
+}
+
 function openTeamImportModal() {
+  timFullTeamData = null;
+  timActiveTab = 'team';
   document.getElementById('team-import-modal').style.display = 'flex';
+  switchTimTab('team');
+  document.getElementById('tim-team-csv').value = '';
+  document.getElementById('tim-team-week').value = '';
+  document.getElementById('tim-team-preview').style.display = 'none';
   document.getElementById('tim-csv-preview').style.display = 'none';
   document.getElementById('tim-csv').value = '';
   ['tim-week','tim-dk','tim-sets','tim-sits','tim-closes','tim-qp'].forEach(id => {
@@ -4457,69 +4476,148 @@ function closeTeamImportModal() {
   document.getElementById('team-import-modal').style.display = 'none';
 }
 
+function csvColFind(row, ...keywords) {
+  if (!row) return null;
+  return Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().includes(kw))) || null;
+}
+
+function extractRepTotals(rows) {
+  if (!rows.length) return { dk:0, qp:0, sets:0, sits:0, closes:0 };
+  const r0 = rows[0];
+  const dkCol     = csvColFind(r0, 'door');
+  const qpCol     = csvColFind(r0, 'qual');
+  const setsCol   = csvColFind(r0, 'appoint', 'set');
+  const sitsCol   = csvColFind(r0, 'sat', 'sit');
+  const closesCol = csvColFind(r0, 'clos');
+  const t = { dk:0, qp:0, sets:0, sits:0, closes:0 };
+  rows.forEach(r => {
+    t.dk     += Number(r[dkCol])     || 0;
+    t.qp     += Number(r[qpCol])     || 0;
+    t.sets   += Number(r[setsCol])   || 0;
+    t.sits   += Number(r[sitsCol])   || 0;
+    t.closes += Number(r[closesCol]) || 0;
+  });
+  return t;
+}
+
+function handleFullTeamCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = parseCSV(e.target.result);
+    if (!rows.length) { toast('CSV appears empty'); return; }
+    const userCol = csvColFind(rows[0], 'user', 'name', 'rep');
+    // Group rows by name
+    const byName = {};
+    rows.forEach(r => {
+      const nameRaw = userCol ? (r[userCol] || '').trim() : '';
+      if (!nameRaw) return;
+      if (!byName[nameRaw]) byName[nameRaw] = [];
+      byName[nameRaw].push(r);
+    });
+
+    // Match each group to a known rep (by first name or last name)
+    timFullTeamData = {};
+    const matched = [];
+    const unmatched = [];
+    Object.entries(byName).forEach(([nameRaw, repRows]) => {
+      const lower = nameRaw.toLowerCase();
+      const repId = Object.keys(TEAM_REPS).find(id =>
+        TEAM_REPS[id].toLowerCase().split(' ').some(part => lower.includes(part))
+      );
+      if (repId) {
+        timFullTeamData[repId] = extractRepTotals(repRows);
+        matched.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
+          <span style="color:var(--green)">✓ ${TEAM_REPS[repId]}</span>
+          <span>DK <b>${timFullTeamData[repId].dk}</b> &nbsp; Sets <b>${timFullTeamData[repId].sets}</b> &nbsp; Sits <b>${timFullTeamData[repId].sits}</b> &nbsp; Closes <b>${timFullTeamData[repId].closes}</b></span>
+        </div>`);
+      } else {
+        unmatched.push(`<div style="color:var(--amber)">⚠ "${nameRaw}" — not matched to a team member</div>`);
+      }
+    });
+
+    const preview = document.getElementById('tim-team-preview');
+    preview.style.display = 'block';
+    preview.innerHTML = matched.join('') + (unmatched.length ? `<div style="margin-top:8px">${unmatched.join('')}</div>` : '');
+  };
+  reader.readAsText(file);
+}
+
 function handleTeamCSV(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     const rows = parseCSV(e.target.result);
-    const repId  = document.getElementById('tim-rep').value;
+    const repId   = document.getElementById('tim-rep').value;
     const repName = TEAM_REPS[repId] || '';
-    // Filter rows matching this rep
-    const userCol = rows[0] ? Object.keys(rows[0]).find(k => k.toLowerCase().includes('user') || k.toLowerCase().includes('name')) : null;
+    const userCol = csvColFind(rows[0], 'user', 'name', 'rep');
     const filtered = userCol
       ? rows.filter(r => (r[userCol]||'').toLowerCase().includes(repName.split(' ')[0].toLowerCase()))
       : rows;
-
-    const colMap = key => {
-      const r = filtered[0];
-      if (!r) return null;
-      return Object.keys(r).find(k => k.toLowerCase().includes(key));
-    };
-    const dkCol     = colMap('door');
-    const qpCol     = colMap('qual');
-    const setsCol   = colMap('appoint') || colMap('set');
-    const sitsCol   = colMap('sat') || colMap('sit');
-    const closesCol = colMap('clos');
-
-    const totals = { dk:0, qp:0, sets:0, sits:0, closes:0 };
-    filtered.forEach(r => {
-      totals.dk     += Number(r[dkCol])     || 0;
-      totals.qp     += Number(r[qpCol])     || 0;
-      totals.sets   += Number(r[setsCol])   || 0;
-      totals.sits   += Number(r[sitsCol])   || 0;
-      totals.closes += Number(r[closesCol]) || 0;
-    });
-
+    const totals = extractRepTotals(filtered);
+    const preview = document.getElementById('tim-csv-preview');
+    preview.style.display = 'block';
+    preview.innerHTML = `<div style="color:var(--green);margin-bottom:6px">✓ Parsed ${filtered.length} row(s) for ${repName}</div>
+      <div>DK: <b>${totals.dk}</b> &nbsp; QP: <b>${totals.qp}</b> &nbsp; Sets: <b>${totals.sets}</b> &nbsp; Sits: <b>${totals.sits}</b> &nbsp; Closes: <b>${totals.closes}</b></div>`;
+    // Pre-fill manual fields for reference
     document.getElementById('tim-dk').value     = totals.dk;
     document.getElementById('tim-qp').value     = totals.qp;
     document.getElementById('tim-sets').value   = totals.sets;
     document.getElementById('tim-sits').value   = totals.sits;
     document.getElementById('tim-closes').value = totals.closes;
-
-    const preview = document.getElementById('tim-csv-preview');
-    preview.style.display = 'block';
-    preview.innerHTML = `<div style="color:var(--green);margin-bottom:6px">✓ Parsed ${filtered.length} row(s) for ${repName}</div>
-      <div>DK: <b>${totals.dk}</b> &nbsp; QP: <b>${totals.qp}</b> &nbsp; Sets: <b>${totals.sets}</b> &nbsp; Sits: <b>${totals.sits}</b> &nbsp; Closes: <b>${totals.closes}</b></div>`;
   };
   reader.readAsText(file);
 }
 
 function saveTeamStats() {
   ensureTeam();
-  const repId   = document.getElementById('tim-rep').value;
-  const label   = document.getElementById('tim-week').value.trim() || new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  const dk      = Number(document.getElementById('tim-dk').value)     || 0;
-  const qp      = Number(document.getElementById('tim-qp').value)     || 0;
-  const sets    = Number(document.getElementById('tim-sets').value)   || 0;
-  const sits    = Number(document.getElementById('tim-sits').value)   || 0;
-  const closes  = Number(document.getElementById('tim-closes').value) || 0;
+  const now = new Date().toISOString();
 
-  state.team[repId].weeks.push({ label, dk, qp, sets, sits, closes, added: new Date().toISOString() });
-  save();
-  renderManager();
-  closeTeamImportModal();
-  toast(`Stats saved for ${TEAM_REPS[repId]}`);
+  if (timActiveTab === 'team') {
+    if (!timFullTeamData || !Object.keys(timFullTeamData).length) {
+      toast('Upload a CSV first'); return;
+    }
+    const label = document.getElementById('tim-team-week').value.trim() || new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    Object.entries(timFullTeamData).forEach(([repId, t]) => {
+      state.team[repId].weeks.push({ label, ...t, added: now });
+    });
+    save(); renderManager(); closeTeamImportModal();
+    toast(`Stats saved for ${Object.keys(timFullTeamData).length} reps`);
+
+  } else if (timActiveTab === 'single') {
+    const repId = document.getElementById('tim-rep').value;
+    const t = extractRepTotals([{
+      'Doors Knocked': document.getElementById('tim-dk').value,
+      'Qualified Pitch': document.getElementById('tim-qp').value,
+      'Appointments Set': document.getElementById('tim-sets').value,
+      'Appointments Sat': document.getElementById('tim-sits').value,
+      'Closed': document.getElementById('tim-closes').value,
+    }]);
+    // use the preview values already filled from CSV
+    const dk = Number(document.getElementById('tim-dk').value) || 0;
+    const qp = Number(document.getElementById('tim-qp').value) || 0;
+    const sets = Number(document.getElementById('tim-sets').value) || 0;
+    const sits = Number(document.getElementById('tim-sits').value) || 0;
+    const closes = Number(document.getElementById('tim-closes').value) || 0;
+    const label = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    state.team[repId].weeks.push({ label, dk, qp, sets, sits, closes, added: now });
+    save(); renderManager(); closeTeamImportModal();
+    toast(`Stats saved for ${TEAM_REPS[repId]}`);
+
+  } else {
+    const repId  = document.getElementById('tim-rep-manual').value;
+    const label  = document.getElementById('tim-week').value.trim() || new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const dk     = Number(document.getElementById('tim-dk').value)     || 0;
+    const qp     = Number(document.getElementById('tim-qp').value)     || 0;
+    const sets   = Number(document.getElementById('tim-sets').value)   || 0;
+    const sits   = Number(document.getElementById('tim-sits').value)   || 0;
+    const closes = Number(document.getElementById('tim-closes').value) || 0;
+    state.team[repId].weeks.push({ label, dk, qp, sets, sits, closes, added: now });
+    save(); renderManager(); closeTeamImportModal();
+    toast(`Stats saved for ${TEAM_REPS[repId]}`);
+  }
 }
 
 function deleteRepData(id) {
