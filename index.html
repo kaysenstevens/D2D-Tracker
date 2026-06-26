@@ -1580,11 +1580,14 @@ function renderGoalTracker() {
 
   const today = new Date();
   today.setHours(0,0,0,0);
+  const endDateVal = document.getElementById('goal-end-date-input')?.value || '2026-08-31';
+  const GOAL_END = new Date(endDateVal + 'T00:00:00');
   const daysLeft = Math.max(0, Math.ceil((GOAL_END - today) / 86400000));
   const weeksLeft = Math.max(1, Math.ceil(daysLeft / 7));
   const totalDays = Math.ceil((GOAL_END - GOAL_START) / 86400000);
   const daysElapsed = Math.max(0, Math.ceil((today - GOAL_START) / 86400000));
   const timePct = Math.min(100, Math.round(daysElapsed / totalDays * 100));
+  const endLabel = GOAL_END.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 
   // All-time conversion rates
   let totalDk=0, totalQp=0, totalSets=0, totalSits=0, totalCloses=0;
