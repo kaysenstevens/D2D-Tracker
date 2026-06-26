@@ -1391,6 +1391,56 @@
   </div>
 </div>
 
+<!-- Pin Data Modal -->
+<div id="pin-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closePinModal()">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <h2>Pin Data</h2>
+      <button class="modal-close" onclick="closePinModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:16px 20px 0">
+      <div style="display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:4px">
+        <button id="pin-tab-csv"        onclick="switchPinTab('csv')"        style="flex:1;padding:7px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;background:var(--accent);color:#fff">CSV Upload</button>
+        <button id="pin-tab-screenshot" onclick="switchPinTab('screenshot')" style="flex:1;padding:7px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--text-muted)">Screenshot</button>
+        <button id="pin-tab-manual"     onclick="switchPinTab('manual')"     style="flex:1;padding:7px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--text-muted)">Manual</button>
+      </div>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+
+      <!-- CSV tab -->
+      <div id="pin-panel-csv">
+        <label class="form-label">Upload pin CSV from prospecting software</label>
+        <input type="file" id="pin-csv-file" accept=".csv" class="form-input" onchange="handlePinCSV(this)">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">CSV should have a column with disposition/pin names and a count column, or one row per door</div>
+        <div id="pin-csv-preview" style="display:none;margin-top:12px;background:var(--surface2);border-radius:8px;padding:12px;font-size:12px"></div>
+      </div>
+
+      <!-- Screenshot tab -->
+      <div id="pin-panel-screenshot" style="display:none">
+        <label class="form-label">Upload screenshot of pin data</label>
+        <input type="file" id="pin-screenshot-file" accept="image/*" class="form-input" onchange="handlePinScreenshot(this)">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Image saved for reference — fill in counts manually below after uploading</div>
+        <div id="pin-screenshot-preview" style="display:none;margin-top:12px;border-radius:8px;overflow:hidden;max-height:200px;text-align:center">
+          <img id="pin-screenshot-img" style="max-width:100%;max-height:200px;border-radius:8px;object-fit:contain">
+        </div>
+      </div>
+
+      <!-- Manual tab -->
+      <div id="pin-panel-manual" style="display:none">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Enter pin counts for the week</div>
+      </div>
+
+      <!-- Pin inputs (shown in all tabs) -->
+      <div id="pin-inputs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closePinModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="savePinData()"><i class="ti ti-check"></i> Save Pins</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Appointment Modal -->
 <div class="modal-overlay" id="appt-modal" style="display:none" onclick="if(event.target===this)closeApptModal()">
   <div class="modal">
