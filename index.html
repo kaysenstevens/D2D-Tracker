@@ -787,10 +787,15 @@
           <h1>Objections & Situations</h1>
           <div class="subtitle">Track what you ran into in the field</div>
         </div>
-        <button class="btn btn-primary" onclick="openObjModal()"><i class="ti ti-plus"></i> Log entry</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="openRecapModal()"><i class="ti ti-notebook"></i> Day recap</button>
+          <button class="btn btn-primary" onclick="openObjModal()"><i class="ti ti-plus"></i> Log entry</button>
+        </div>
       </div>
       <div class="content">
+        <div id="obj-coach"></div>
         <div id="obj-patterns"></div>
+        <div id="obj-recaps"></div>
         <div id="obj-log"></div>
       </div>
     </div>
