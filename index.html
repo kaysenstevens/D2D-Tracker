@@ -795,7 +795,66 @@
       </div>
     </div>
 
+    <!-- DEALS PAGE -->
+    <div id="page-deals" class="page">
+      <div class="main-header">
+        <div>
+          <h1>Deals</h1>
+          <div class="subtitle" id="deals-subtitle">Track every deal you've closed</div>
+        </div>
+        <button class="btn btn-primary" onclick="openDealModal()"><i class="ti ti-plus"></i> Add deal</button>
+      </div>
+      <div class="content">
+        <div class="stat-grid" id="deals-stats"></div>
+        <div id="deals-list"></div>
+      </div>
+    </div>
+
   </main>
+</div>
+
+<!-- Deal Modal -->
+<div class="modal-overlay" id="deal-modal" style="display:none" onclick="if(event.target===this)closeDealModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="deal-modal-title">Add Deal</div>
+      <button class="close-btn" onclick="closeDealModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Customer name</label>
+        <input id="deal-name" class="form-input" placeholder="e.g. John Smith">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date closed</label>
+        <input id="deal-date" class="form-input" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Commission amount ($)</label>
+        <input id="deal-amount" class="form-input" type="number" min="0" placeholder="e.g. 4500">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select id="deal-status" class="form-input">
+          <option value="active">Active</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input id="deal-address" class="form-input" placeholder="e.g. 123 Main St">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea id="deal-notes" class="form-input" rows="3" placeholder="Any notes about this deal..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDealModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDeal()">Save</button>
+    </div>
+  </div>
 </div>
 
 <!-- Objection Modal -->
