@@ -1498,6 +1498,19 @@ function applySeeds(saveAfter) {
     if (!hasRealData) {
       state.months[month].weeks = weeks;
       seeded = true;
+    } else {
+      // Migrate old Monday-only weeks to weeklyTotal format
+      existing.forEach(wk => {
+        if (!wk.weeklyTotal && wk.days && wk.days.Monday && !wk.days.Week) {
+          const seedMatch = weeks.find(s => s.range === wk.range);
+          if (seedMatch) {
+            wk.weeklyTotal = true;
+            wk.days.Week = wk.days.Monday;
+            delete wk.days.Monday;
+            seeded = true;
+          }
+        }
+      });
     }
   });
   if (saveAfter && seeded) save();
