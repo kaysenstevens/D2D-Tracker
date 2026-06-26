@@ -3854,6 +3854,59 @@ Rules:
 }
 
 /* ---- Deals ---- */
+/* ---- Elite Setter Pay Scale ---- */
+const ELITE_RATE_TABLE = {
+  29:50,30:75,31:105,32:135,33:165,34:195,35:225,
+  36:260,37:290,38:320,39:355,40:390,41:420,
+  42:455,43:490,44:530,45:565,46:600,47:640,48:675,49:715,50:750,
+  51:785,52:815,53:850,54:880,55:915,56:945,57:975,58:1010,
+  59:1040,60:1070,61:1105,62:1135,63:1165,64:1195,65:1230,
+  66:1260,67:1290,68:1320,69:1355,70:1385
+};
+
+function getEliteSetterRate(ppw) {
+  const key = Math.round(ppw * 10);
+  if (key <= 29) return 50;
+  if (key >= 70) return 1385;
+  if (ELITE_RATE_TABLE[key] !== undefined) return ELITE_RATE_TABLE[key];
+  // interpolate
+  let lo = key - 1, hi = key + 1;
+  while (lo >= 29 && !ELITE_RATE_TABLE[lo]) lo--;
+  while (hi <= 70 && !ELITE_RATE_TABLE[hi]) hi++;
+  return Math.round(ELITE_RATE_TABLE[lo] + (key - lo) / (hi - lo) * (ELITE_RATE_TABLE[hi] - ELITE_RATE_TABLE[lo]));
+}
+
+function calcDealPay(kw, ppw) {
+  const ratePerKw = getEliteSetterRate(ppw);
+  const total     = ratePerKw * kw;
+  const m1        = 50 * kw;
+  const backend   = total - m1;
+  const zone      = ppw < 4.20 ? 'Floor' : ppw <= 5.80 ? 'Meat' : 'Upside';
+  const zoneColor = ppw < 4.20 ? 'var(--amber)' : ppw <= 5.80 ? 'var(--green)' : 'var(--accent)';
+  const zoneBg    = ppw < 4.20 ? 'var(--amber-bg,#451a00)' : ppw <= 5.80 ? '#052e16' : '#1a1033';
+  return { ratePerKw, total, m1, backend, zone, zoneColor, zoneBg };
+}
+
+function updateDealCalc() {
+  const kw  = parseFloat(document.getElementById('deal-kw').value);
+  const ppw = parseFloat(document.getElementById('deal-ppw').value);
+  const panel = document.getElementById('deal-calc-panel');
+  const note  = document.getElementById('deal-amount-note');
+  if (!kw || !ppw || kw <= 0 || ppw <= 0) { panel.style.display = 'none'; if (note) note.textContent = ''; return; }
+  const p = calcDealPay(kw, ppw);
+  const fmt = n => '$' + Math.round(n).toLocaleString();
+  document.getElementById('deal-calc-zone').textContent    = p.zone + ' Zone';
+  document.getElementById('deal-calc-zone').style.background = p.zoneBg;
+  document.getElementById('deal-calc-zone').style.color      = p.zoneColor;
+  document.getElementById('deal-calc-rate').textContent    = `$${p.ratePerKw}/kW · ${kw}kW system`;
+  document.getElementById('deal-calc-total').textContent   = fmt(p.total);
+  document.getElementById('deal-calc-m1').textContent      = fmt(p.m1);
+  document.getElementById('deal-calc-backend').textContent = fmt(p.backend);
+  panel.style.display = 'block';
+  document.getElementById('deal-amount').value = Math.round(p.total);
+  if (note) note.textContent = 'auto-calculated';
+}
+
 function getDeals() { if (!state.deals) state.deals = []; return state.deals; }
 
 let editingDealIndex = -1;
@@ -3865,20 +3918,33 @@ function openDealModal(i) {
   document.getElementById('deal-modal-title').textContent = d ? 'Edit Deal' : 'Add Deal';
   document.getElementById('deal-name').value    = d?.name    || '';
   document.getElementById('deal-date').value    = d?.date    || new Date().toISOString().slice(0,10);
-  document.getElementById('deal-amount').value  = d?.amount  != null ? d.amount : '';
+  document.getElementById('deal-amount').value  = d?.amount  != null && d.amount > 0 ? d.amount : '';
   document.getElementById('deal-status').value  = d?.status  || 'active';
   document.getElementById('deal-address').value = d?.address || '';
   document.getElementById('deal-notes').value   = d?.notes   || '';
+  document.getElementById('deal-kw').value      = d?.kw      || '';
+  document.getElementById('deal-ppw').value     = d?.ppw     || '';
+  document.getElementById('deal-calc-panel').style.display = 'none';
+  const note = document.getElementById('deal-amount-note');
+  if (note) note.textContent = '';
+  if (d?.kw && d?.ppw) updateDealCalc();
   document.getElementById('deal-modal').style.display = 'flex';
 }
 function closeDealModal() { document.getElementById('deal-modal').style.display = 'none'; }
 
 function saveDeal() {
   const deals = getDeals();
+  const kw  = parseFloat(document.getElementById('deal-kw').value) || 0;
+  const ppw = parseFloat(document.getElementById('deal-ppw').value) || 0;
+  let amount = parseFloat(document.getElementById('deal-amount').value) || 0;
+  // if kw+ppw provided and amount wasn't manually overridden, use calc
+  if (kw > 0 && ppw > 0 && !amount) amount = Math.round(calcDealPay(kw, ppw).total);
   const data = {
     name:    document.getElementById('deal-name').value.trim(),
     date:    document.getElementById('deal-date').value,
-    amount:  parseFloat(document.getElementById('deal-amount').value) || 0,
+    amount,
+    kw,
+    ppw,
     status:  document.getElementById('deal-status').value,
     address: document.getElementById('deal-address').value.trim(),
     notes:   document.getElementById('deal-notes').value.trim(),
