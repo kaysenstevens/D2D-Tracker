@@ -4223,6 +4223,79 @@ function deleteObjEntry(idx) {
   renderObjections();
 }
 
+/* ---- Day Recap ---- */
+let currentRecapRating = '';
+function setRecapRating(r, btn) {
+  currentRecapRating = r;
+  document.querySelectorAll('#recap-rating-btns .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function openRecapModal() {
+  currentRecapRating = '';
+  document.querySelectorAll('#recap-rating-btns .filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('recap-date').value = new Date().toISOString().slice(0,10);
+  ['recap-good','recap-bad','recap-learning'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('recap-modal').style.display = 'flex';
+}
+function closeRecapModal() { document.getElementById('recap-modal').style.display = 'none'; }
+function saveRecap() {
+  const date = document.getElementById('recap-date').value;
+  if (!date) { toast('Pick a date'); return; }
+  if (!state.dayRecaps) state.dayRecaps = [];
+  state.dayRecaps.unshift({
+    date,
+    rating: currentRecapRating,
+    good: document.getElementById('recap-good').value.trim(),
+    bad: document.getElementById('recap-bad').value.trim(),
+    learning: document.getElementById('recap-learning').value.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  save(); closeRecapModal(); renderObjections(); toast('Recap saved');
+}
+function deleteRecap(i) {
+  if (!confirm('Delete this recap?')) return;
+  state.dayRecaps.splice(i,1); save(); renderObjections();
+}
+
+/* ---- AI Coach ---- */
+const COACH_PATTERNS = [
+  { name:'Spouse / second decision-maker', icon:'👥', keywords:['spouse','husband','wife','partner','talk','discuss','together','have to ask','run it by','both of us'], minHits:2,
+    advice:"You're hitting the two-decision-maker wall regularly. Fix this at the door — before you pitch, ask: \"Is your spouse home tonight? This works best when both of you can hear it together.\" If they say no, set a time when both are home instead of pitching solo." },
+  { name:'Price / affordability', icon:'💰', keywords:['price','expensive','cost','afford','money','budget','too much','can\'t','savings','bill','payment'], minHits:2,
+    advice:"Price is coming up a lot, which usually means value wasn't fully locked in before numbers. Try this: anchor on their current electric bill cost-per-year, then show what they'd pay with solar. When the math is clear, price stops feeling like a sacrifice." },
+  { name:'"Think about it" / stalling', icon:'⏳', keywords:['think','thinking','later','tomorrow','not now','wait','call me','follow up','need time','sleep on'], minHits:2,
+    advice:"Stall objections are an urgency problem. Before you close, plant a deadline: \"We have one install crew opening in the next 3 weeks — after that it's 6+ months.\" Create a reason why waiting costs them money." },
+  { name:'Not interested / disengaged', icon:'🚪', keywords:['not interested','no thanks','don\'t want','already have','happy with','good right now','no need'], minHits:2,
+    advice:"High \"not interested\" rate means your opener isn't creating curiosity fast enough. Try leading with a specific local hook: \"I just helped your neighbor on [street] cut their bill by $X — I wanted to show you the same thing.\" Give them a reason to listen before pitching." },
+  { name:'Competitor / already have solar', icon:'⚡', keywords:['already have solar','competitor','other company','sunrun','vivint','tesla','sunnova','another company','got a quote'], minHits:1,
+    advice:"Competitive situations require a comparison pivot — never trash the competitor. Ask: \"What made you go with them?\" Then find the gap: warranty, monitoring, company size. Position your offer around the thing they care about that the other company doesn't deliver." },
+  { name:'HOA / renter / can\'t decide', icon:'🏠', keywords:['hoa','renter','rental','landlord','lease','rent','association','rules','can\'t approve'], minHits:1,
+    advice:"You're landing on non-owners too often. Add a qualification question within the first 60 seconds: \"Just so I show you the right numbers — do you own or rent here?\" Saves you a full pitch on a dead lead." },
+  { name:'Low electric bill', icon:'📉', keywords:['low bill','small bill','don\'t use much','low usage','only pay','not that much','low electric'], minHits:1,
+    advice:"Low-bill leads can still be great if you shift the frame. Ask for 12 months of usage, not just one month — summer spikes matter. Then anchor on rate increases: \"Your bill is low now, but Edison has raised rates 7 times in 5 years. Want to lock in your rate today?\"" },
+];
+
+function generateCoachInsights(entries) {
+  if (!entries.length) return [];
+  const insights = [];
+  const objEntries = entries.filter(e => e.type === 'objection' || e.type === 'stuck');
+  if (!objEntries.length) return [];
+
+  COACH_PATTERNS.forEach(pat => {
+    let hitCount = 0;
+    objEntries.forEach(e => {
+      const text = e.description.toLowerCase();
+      if (pat.keywords.some(kw => text.includes(kw))) hitCount++;
+    });
+    if (hitCount >= pat.minHits) {
+      insights.push({ ...pat, hitCount });
+    }
+  });
+
+  // Sort by most frequent
+  return insights.sort((a,b) => b.hitCount - a.hitCount);
+}
+
 function renderObjections() {
   const el = document.getElementById('obj-log');
   const patEl = document.getElementById('obj-patterns');
