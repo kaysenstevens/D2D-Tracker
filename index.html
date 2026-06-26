@@ -1775,7 +1775,12 @@ function renderGoalTracker() {
   });
   // Closes & earned commission from Deals page
   const deals = getDeals();
-  const activeDeals = deals.filter(d => d.status !== 'cancelled' && (!d.date || d.date >= '2026-06-25'));
+  // Only count deals with real data (exclude blank pre-seeded placeholders)
+  const activeDeals = deals.filter(d =>
+    d.status !== 'cancelled' &&
+    (!d.date || d.date >= '2026-06-25') &&
+    (d.name || (d.amount && d.amount > 0) || d.kw > 0)
+  );
   const haveCloses = activeDeals.length;
   const haveEarned = activeDeals.reduce((a, d) => a + (Number(d.amount) || 0), 0);
 
