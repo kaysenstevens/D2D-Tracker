@@ -4111,38 +4111,37 @@ function startRealtimeSync() {
   const docRef = syncDb.collection('d2d_trackers').doc(syncUser.uid);
   // First load from cloud
   docRef.get().then(doc => {
-    if (doc.exists && doc.data().state) {
-      const remote = JSON.parse(doc.data().state);
-      state = remote;
-      const seeded = applySeeds(false);
-      const dealsBefore = (state.deals || []).length;
-      syncDealsToCloses();
-      const dealsAdded = (state.deals || []).length > dealsBefore;
-      localStorage.setItem('d2d_v3', JSON.stringify(state));
-      if (seeded || dealsAdded) pushToCloud();
-      renderAll();
-      toast('Data loaded from cloud ☁️');
-    } else {
-      // Push local data up first time
-      pushToCloud();
-    }
-  }).catch(e => console.error('Sync load error', e));
+    try {
+      if (doc.exists && doc.data().state) {
+        const remote = JSON.parse(doc.data().state);
+        state = remote;
+        const seeded = applySeeds(false);
+        if (typeof syncDealsToCloses === 'function') syncDealsToCloses();
+        localStorage.setItem('d2d_v3', JSON.stringify(state));
+        if (seeded) pushToCloud();
+        renderAll();
+        toast('Data loaded from cloud ☁️');
+      } else {
+        pushToCloud();
+      }
+    } catch(e) { console.error('Sync load error', e); renderAll(); }
+  }).catch(e => { console.error('Sync fetch error', e); renderAll(); });
 
   // Real-time listener for changes from other devices
   syncUnsubscribe = docRef.onSnapshot(doc => {
-    if (!doc.exists || !doc.data().state) return;
-    const remoteStr = doc.data().state;
-    const localStr = JSON.stringify(state);
-    if (remoteStr !== localStr) {
-      state = JSON.parse(remoteStr);
-      const seeded = applySeeds(false);
-      const dealsBefore2 = (state.deals || []).length;
-      syncDealsToCloses();
-      const dealsAdded2 = (state.deals || []).length > dealsBefore2;
-      localStorage.setItem('d2d_v3', JSON.stringify(state));
-      renderAll();
-      if (seeded || dealsAdded2) pushToCloud();
-    }
+    try {
+      if (!doc.exists || !doc.data().state) return;
+      const remoteStr = doc.data().state;
+      const localStr = JSON.stringify(state);
+      if (remoteStr !== localStr) {
+        state = JSON.parse(remoteStr);
+        const seeded = applySeeds(false);
+        if (typeof syncDealsToCloses === 'function') syncDealsToCloses();
+        localStorage.setItem('d2d_v3', JSON.stringify(state));
+        renderAll();
+        if (seeded) pushToCloud();
+      }
+    } catch(e) { console.error('Sync snapshot error', e); }
   }, e => console.error('Sync listener error', e));
 }
 
