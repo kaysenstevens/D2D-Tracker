@@ -2189,6 +2189,7 @@ function updateCell(wi, day, col, val) {
   const mo = getMonth(currentMonth);
   if (!mo.weeks[wi].days[day]) mo.weeks[wi].days[day] = {};
   mo.weeks[wi].days[day][col] = val === '' ? 0 : +val;
+  if (col === 'closes') { syncDealsToCloses(); renderDeals(); }
   save();
   renderDashboard();
   const tfoot = document.querySelectorAll('.tfoot-row')[wi];
