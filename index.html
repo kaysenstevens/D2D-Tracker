@@ -624,13 +624,17 @@
             <i class="ti ti-chevron-up" id="dash-goal-chevron"></i>
           </div>
           <div id="dash-goal-body">
-            <!-- Row 1: closes + end date -->
+            <!-- Row 1: closes + date range -->
             <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;align-items:center">
               <label style="font-size:13px;color:var(--text2)">Close</label>
               <input id="goal-closes-input" type="number" min="1" value="10"
                 style="width:60px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:15px;font-weight:700;text-align:center"
                 oninput="renderGoalTracker()">
-              <label style="font-size:13px;color:var(--text2)">deals by</label>
+              <label style="font-size:13px;color:var(--text2)">deals from</label>
+              <input id="goal-start-date-input" type="date" value="2026-06-25"
+                style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:13px;font-weight:600"
+                oninput="renderGoalTracker()">
+              <label style="font-size:13px;color:var(--text2)">to</label>
               <input id="goal-end-date-input" type="date" value="2026-08-31"
                 style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:13px;font-weight:600"
                 oninput="renderGoalTracker()">
