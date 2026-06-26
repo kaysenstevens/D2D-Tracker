@@ -2272,7 +2272,7 @@ function renderWeekTable(wk, wi, monthKey) {
           </button>
         </div>
       </div>
-      ${collapsed ? '' : tableBody}
+      ${collapsed ? '' : tableBody + renderWeekPins(wk, wi, monthKey)}
     </div>`;
 }
 
