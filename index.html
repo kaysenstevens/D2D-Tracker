@@ -2038,6 +2038,7 @@ function renderAllMonths() {
 
 /* ---- Weeks ---- */
 const collapsedWeeks = new Set();
+const weeksSeen = new Set(); // tracks weeks auto-collapsed on first load
 
 function toggleWeek(key) {
   if (collapsedWeeks.has(key)) collapsedWeeks.delete(key);
