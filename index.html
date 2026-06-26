@@ -2116,9 +2116,12 @@ function renderWeeks() {
   // Sort months chronologically (oldest first)
   const allMonths = Object.keys(state.months || {}).sort();
   const hasAny = allMonths.some(m => (state.months[m].weeks || []).length > 0);
-  // Auto-collapse all weeks that aren't already tracked
+  // Auto-collapse weeks the first time they're seen only
   allMonths.forEach(m => {
-    (state.months[m].weeks || []).forEach((_, wi) => { collapsedWeeks.add(`${m}-${wi}`); });
+    (state.months[m].weeks || []).forEach((_, wi) => {
+      const key = `${m}-${wi}`;
+      if (!weeksSeen.has(key)) { weeksSeen.add(key); collapsedWeeks.add(key); }
+    });
   });
 
   if (!hasAny) {
