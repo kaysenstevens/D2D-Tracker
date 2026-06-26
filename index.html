@@ -1825,21 +1825,13 @@ function renderAllMonths() {
 }
 
 /* ---- Weeks ---- */
-function renderWeeks() {
-  const mo = getMonth(currentMonth);
-  const cont = document.getElementById('weeks-content');
-
-  if (mo.weeks.length === 0) {
-    cont.innerHTML = `<div class="panel"><div class="empty"><i class="ti ti-calendar-off"></i><p>No weeks yet. Add a week to start tracking.</p></div></div>`;
-    return;
-  }
-
-  cont.innerHTML = mo.weeks.map((wk, wi) => `
+function renderWeekTable(wk, wi, monthKey) {
+  return `
     <div class="panel week-section" style="margin-bottom:16px">
       <div class="week-header">
         <h3><span style="color:var(--text2)">${wk.area}</span> &nbsp;·&nbsp; ${wk.range}</h3>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="deleteWeek(${wi})"><i class="ti ti-trash" style="font-size:13px"></i></button>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="deleteWeekFromMonth('${monthKey}',${wi})"><i class="ti ti-trash" style="font-size:13px"></i></button>
         </div>
       </div>
       <div style="overflow-x:auto">
@@ -1858,12 +1850,12 @@ function renderWeeks() {
         <tbody>
           ${DAYS.map(day => `
             <tr>
-              <td>${day}</td>
+              <td>${day.substring(0,3)}</td>
               ${COLS.map(col => `
                 <td><input type="number" class="cell-input col-${col==='dk'?'dk':col==='qp'?'qp':col==='sets'?'set':col==='sits'?'sit':col==='closes'?'close':'fail'}"
                   value="${(wk.days[day] || {})[col] || ''}"
                   placeholder="—"
-                  oninput="updateCell(${wi},'${day}','${col}',this.value)"
+                  oninput="updateCellMonth('${monthKey}',${wi},'${day}','${col}',this.value)"
                   min="0"></td>
               `).join('')}
             </tr>
@@ -1881,8 +1873,42 @@ function renderWeeks() {
       </table>
       </div>
       ${renderWeekRatios(wk)}
-    </div>
-  `).join('');
+    </div>`;
+}
+
+function renderWeeks() {
+  const cont = document.getElementById('weeks-content');
+  const allMonths = Object.keys(state.months || {}).sort().reverse();
+  const hasAny = allMonths.some(m => (state.months[m].weeks || []).length > 0);
+
+  if (!hasAny) {
+    cont.innerHTML = `<div class="panel"><div class="empty"><i class="ti ti-calendar-off"></i><p>No weeks yet. Add a week to start tracking.</p></div></div>`;
+    return;
+  }
+
+  cont.innerHTML = allMonths.map(m => {
+    const weeks = state.months[m].weeks || [];
+    if (weeks.length === 0) return '';
+    return `
+      <div style="margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:0 4px;margin-bottom:10px">${monthName(m)}</div>
+        ${weeks.map((wk, wi) => renderWeekTable(wk, wi, m)).join('')}
+      </div>`;
+  }).join('');
+}
+
+function updateCellMonth(monthKey, wi, day, col, val) {
+  const mo = state.months[monthKey];
+  if (!mo || !mo.weeks[wi]) return;
+  if (!mo.weeks[wi].days[day]) mo.weeks[wi].days[day] = {};
+  mo.weeks[wi].days[day][col] = val === '' ? 0 : +val;
+  save(); renderDashboard();
+}
+
+function deleteWeekFromMonth(monthKey, wi) {
+  if (!confirm('Delete this week?')) return;
+  state.months[monthKey].weeks.splice(wi, 1);
+  save(); renderAll();
 }
 
 function renderWeekRatios(wk) {
