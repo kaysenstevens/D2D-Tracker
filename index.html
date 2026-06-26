@@ -2179,7 +2179,8 @@ function toggleWeek(key) {
 function renderWeekTable(wk, wi, monthKey) {
   const key = `${monthKey}-${wi}`;
   const collapsed = collapsedWeeks.has(key);
-  const totals = COLS.map(col => DAYS.reduce((a, d) => a + (+((wk.days[d]||{})[col]||0)), 0));
+  const wt = weekTotalsFrom(wk);
+  const totals = COLS.map(col => wt[col] || 0);
   const totalLabels = ['DK','QP','Sets','Sits','Closes','Fails'];
   const totalColors = ['blue','purple','teal','amber','green','red'];
 
@@ -2187,22 +2188,36 @@ function renderWeekTable(wk, wi, monthKey) {
     ? `<span style="font-size:11px;color:var(--${totalColors[i]});font-weight:600">${totalLabels[i]}: ${v}</span>`
     : '').filter(Boolean).join('<span style="color:var(--text3);margin:0 2px">·</span>');
 
-  return `
-    <div class="panel week-section" style="margin-bottom:12px">
-      <div class="week-header" onclick="toggleWeek('${key}')" style="cursor:pointer;user-select:none">
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1">
-          <h3 style="margin:0"><span style="color:var(--text2)">${wk.area}</span> &nbsp;·&nbsp; ${wk.range}</h3>
-          ${collapsed && summaryBadges ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">${summaryBadges}</div>` : ''}
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <i class="ti ${collapsed ? 'ti-chevron-down' : 'ti-chevron-up'}" style="color:var(--text3);font-size:14px"></i>
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();deleteWeekFromMonth('${monthKey}',${wi})">
-            <i class="ti ti-trash" style="font-size:13px"></i>
-          </button>
-        </div>
+  const tableBody = wk.weeklyTotal
+    ? `<div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px"></th>
+            <th class="col-dk">DK</th>
+            <th class="col-qp">QP</th>
+            <th class="col-set">Sets</th>
+            <th class="col-sit">Sits</th>
+            <th class="col-close">Closes</th>
+            <th class="col-fail">Fails</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:var(--text3);font-size:11px">Week</td>
+            ${COLS.map(col => `
+              <td><input type="number" class="cell-input col-${col==='dk'?'dk':col==='qp'?'qp':col==='sets'?'set':col==='sits'?'sit':col==='closes'?'close':'fail'}"
+                value="${(wk.days.Week || {})[col] || ''}"
+                placeholder="—"
+                oninput="updateCellMonth('${monthKey}',${wi},'Week','${col}',this.value)"
+                min="0"></td>
+            `).join('')}
+          </tr>
+        </tbody>
+      </table>
       </div>
-      ${collapsed ? '' : `
-      <div style="overflow-x:auto">
+      ${renderWeekRatios(wk)}`
+    : `<div style="overflow-x:auto">
       <table>
         <thead>
           <tr>
@@ -2237,7 +2252,23 @@ function renderWeekTable(wk, wi, monthKey) {
         </tfoot>
       </table>
       </div>
-      ${renderWeekRatios(wk)}`}
+      ${renderWeekRatios(wk)}`;
+
+  return `
+    <div class="panel week-section" style="margin-bottom:12px">
+      <div class="week-header" onclick="toggleWeek('${key}')" style="cursor:pointer;user-select:none">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+          <h3 style="margin:0"><span style="color:var(--text2)">${wk.area}</span> &nbsp;·&nbsp; ${wk.range}${wk.weeklyTotal ? ' <span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">weekly total</span>' : ''}</h3>
+          ${collapsed && summaryBadges ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">${summaryBadges}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <i class="ti ${collapsed ? 'ti-chevron-down' : 'ti-chevron-up'}" style="color:var(--text3);font-size:14px"></i>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();deleteWeekFromMonth('${monthKey}',${wi})">
+            <i class="ti ti-trash" style="font-size:13px"></i>
+          </button>
+        </div>
+      </div>
+      ${collapsed ? '' : tableBody}
     </div>`;
 }
 
