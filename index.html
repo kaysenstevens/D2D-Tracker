@@ -1648,12 +1648,15 @@ function renderAll() {
 
 /* ---- Aggregation ---- */
 function aggregateWeeks() {
-  const mo = getMonth(currentMonth);
   const totals = { dk:0, qp:0, sets:0, sits:0, closes:0, fails:0 };
   const byDay = {};
   DAYS.forEach(d => { byDay[d] = { dk:0, qp:0, sets:0, sits:0, closes:0, fails:0 }; });
 
-  mo.weeks.forEach(wk => {
+  const weeks = dashAllTime
+    ? Object.values(state.months || {}).flatMap(mo => mo.weeks || [])
+    : getMonth(currentMonth).weeks;
+
+  weeks.forEach(wk => {
     if (wk.weeklyTotal) {
       COLS.forEach(col => { totals[col] += +((wk.days.Week || {})[col] || 0); });
     } else {
@@ -1667,6 +1670,20 @@ function aggregateWeeks() {
     }
   });
   return { totals, byDay };
+}
+
+function toggleDashAllTime() {
+  dashAllTime = !dashAllTime;
+  const btn = document.getElementById('dash-alltime-btn');
+  if (btn) {
+    btn.style.background  = dashAllTime ? 'var(--accent)'  : 'var(--surface2)';
+    btn.style.color       = dashAllTime ? '#fff'           : 'var(--text2)';
+    btn.style.borderColor = dashAllTime ? 'var(--accent)'  : 'var(--border)';
+    btn.innerHTML = dashAllTime
+      ? '<i class="ti ti-history" style="margin-right:4px"></i>All Time ✓'
+      : '<i class="ti ti-history" style="margin-right:4px"></i>All Time';
+  }
+  renderDashboard();
 }
 
 function aggregateAppts() {
