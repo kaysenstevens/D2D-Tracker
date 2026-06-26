@@ -1691,7 +1691,7 @@ function renderGoalTracker() {
   const timebar = `
     <div style="margin-bottom:16px;background:var(--surface2);border-radius:12px;padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;font-weight:600;color:var(--text1)"><i class="ti ti-calendar-event" style="margin-right:6px"></i>Jun 25 → Aug 31</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text1)"><i class="ti ti-calendar-event" style="margin-right:6px"></i>Jun 25 → ${endLabel}</span>
         <span style="font-size:13px;color:var(--text2);font-weight:600">${daysLeft} days left</span>
       </div>
       <div style="background:var(--surface3,#1a1a2e);border-radius:99px;height:6px;overflow:hidden">
@@ -1699,7 +1699,7 @@ function renderGoalTracker() {
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:6px">
         <span style="font-size:11px;color:var(--text3)">${weeksLeft} week${weeksLeft!==1?'s':''} remaining</span>
-        <span style="font-size:11px;color:var(--text3)">${timePct}% of summer elapsed</span>
+        <span style="font-size:11px;color:var(--text3)">${timePct}% of goal period elapsed</span>
       </div>
     </div>`;
 
