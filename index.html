@@ -1559,7 +1559,20 @@ function toggleDashSection(section) {
 
 /* ---- Goal Tracker ---- */
 const GOAL_START = new Date('2026-06-25');
-const GOAL_END   = new Date('2026-08-31');
+let goalFocusMode = false; // false = show progress, true = daily targets only
+function toggleGoalFocus() {
+  goalFocusMode = !goalFocusMode;
+  const btn = document.getElementById('goal-focus-btn');
+  if (btn) {
+    btn.innerHTML = goalFocusMode
+      ? '<i class="ti ti-target" style="margin-right:4px"></i>Daily targets'
+      : '<i class="ti ti-eye" style="margin-right:4px"></i>Show progress';
+    btn.style.background = goalFocusMode ? 'var(--accent)' : 'var(--surface2)';
+    btn.style.color = goalFocusMode ? '#fff' : 'var(--text2)';
+    btn.style.borderColor = goalFocusMode ? 'var(--accent)' : 'var(--border)';
+  }
+  renderGoalTracker();
+}
 
 function renderGoalTracker() {
   const el = document.getElementById('dash-goal-content');
