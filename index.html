@@ -889,6 +889,47 @@
   </div>
 </div>
 
+<!-- Day Recap Modal -->
+<div class="modal-overlay" id="recap-modal" style="display:none" onclick="if(event.target===this)closeRecapModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Day Recap</div>
+      <button class="close-btn" onclick="closeRecapModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input id="recap-date" class="form-input" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">How'd it go?</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="recap-rating-btns">
+          <button class="filter-btn" onclick="setRecapRating('🔥 Fire',this)">🔥 Fire</button>
+          <button class="filter-btn" onclick="setRecapRating('✅ Good',this)">✅ Good</button>
+          <button class="filter-btn" onclick="setRecapRating('😐 Meh',this)">😐 Meh</button>
+          <button class="filter-btn" onclick="setRecapRating('💀 Rough',this)">💀 Rough</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">What worked?</label>
+        <textarea class="form-input" id="recap-good" rows="2" placeholder="Moments you felt on, things that clicked..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">What needs work?</label>
+        <textarea class="form-input" id="recap-bad" rows="2" placeholder="Where you lost momentum, got stuck..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Biggest learning</label>
+        <textarea class="form-input" id="recap-learning" rows="2" placeholder="One thing you'd do differently tomorrow..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRecapModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRecap()">Save recap</button>
+    </div>
+  </div>
+</div>
+
 <!-- Field Prefs Sheet -->
 <div class="field-prefs-backdrop" id="field-prefs-backdrop" onclick="closeFieldPrefs()"></div>
 <div class="field-prefs-sheet" id="field-prefs-sheet">
