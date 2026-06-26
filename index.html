@@ -2443,14 +2443,19 @@ function deleteAppt(i) {
 function openWeekModal() {
   document.getElementById('wk-area').value = '';
   document.getElementById('wk-range').value = '';
+  document.getElementById('wk-weekly-total').checked = false;
   document.getElementById('week-modal').style.display = 'flex';
 }
 function closeWeekModal() { document.getElementById('week-modal').style.display = 'none'; }
 function saveWeek() {
   const area = document.getElementById('wk-area').value.trim();
   const range = document.getElementById('wk-range').value.trim();
+  const weeklyTotal = document.getElementById('wk-weekly-total').checked;
   if (!area) { alert('Please enter an area name.'); return; }
-  getMonth(currentMonth).weeks.push({ area, range, days: {} });
+  const wk = weeklyTotal
+    ? { area, range, weeklyTotal: true, days: { Week: {} } }
+    : { area, range, days: {} };
+  getMonth(currentMonth).weeks.push(wk);
   save(); closeWeekModal(); renderAll(); toast('Week added');
 }
 
