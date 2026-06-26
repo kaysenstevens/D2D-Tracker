@@ -3998,25 +3998,48 @@ function renderDeals() {
   const statusLabel = { active:'Active', cancelled:'Cancelled', pending:'Pending' };
 
   listEl.innerHTML = `<div class="panel" style="padding:0;overflow:hidden">` +
-    deals.map((d, i) => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);gap:12px">
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:15px;color:var(--text1)">${d.name || '<span style="color:var(--text3)">Unnamed deal</span>'}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:3px;display:flex;flex-wrap:wrap;gap:8px">
-            ${d.date ? `<span><i class="ti ti-calendar" style="font-size:11px"></i> ${d.date}</span>` : ''}
-            ${d.address ? `<span><i class="ti ti-map-pin" style="font-size:11px"></i> ${d.address}</span>` : ''}
-            ${d.notes ? `<span style="color:var(--text2)">${d.notes.substring(0,60)}${d.notes.length>60?'…':''}</span>` : ''}
+    deals.map((d, i) => {
+      const pay = (d.kw && d.ppw) ? calcDealPay(d.kw, d.ppw) : null;
+      return `
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:15px;color:var(--text1)">${d.name || '<span style="color:var(--text3)">Unnamed deal</span>'}</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:3px;display:flex;flex-wrap:wrap;gap:8px">
+              ${d.date ? `<span><i class="ti ti-calendar" style="font-size:11px"></i> ${d.date}</span>` : ''}
+              ${d.kw ? `<span><i class="ti ti-bolt" style="font-size:11px"></i> ${d.kw} kW</span>` : ''}
+              ${d.ppw ? `<span><i class="ti ti-currency-dollar" style="font-size:11px"></i> $${d.ppw}/W</span>` : ''}
+              ${pay ? `<span style="color:${pay.zoneColor};font-weight:600">${pay.zone}</span>` : ''}
+              ${d.address ? `<span><i class="ti ti-map-pin" style="font-size:11px"></i> ${d.address}</span>` : ''}
+            </div>
+            ${d.notes ? `<div style="font-size:12px;color:var(--text2);margin-top:4px">${d.notes.substring(0,80)}${d.notes.length>80?'…':''}</div>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+            <span style="font-size:17px;font-weight:800;color:var(--${statusColor[d.status]||'text2'})">${d.amount ? fmt(d.amount) : '—'}</span>
+            <span class="badge badge-${statusColor[d.status]||'gray'}">${statusLabel[d.status]||d.status}</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="openDealModal(${i})"><i class="ti ti-pencil" style="font-size:12px"></i></button>
+              <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="deleteDeal(${i})"><i class="ti ti-trash" style="font-size:12px"></i></button>
+            </div>
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-          <span style="font-size:17px;font-weight:800;color:var(--${statusColor[d.status]||'text2'})">${d.amount ? fmt(d.amount) : '—'}</span>
-          <span class="badge badge-${statusColor[d.status]||'gray'}">${statusLabel[d.status]||d.status}</span>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="openDealModal(${i})"><i class="ti ti-pencil" style="font-size:12px"></i></button>
-            <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="deleteDeal(${i})"><i class="ti ti-trash" style="font-size:12px"></i></button>
+        ${pay ? `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;background:var(--bg3);border-radius:8px;padding:8px">
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600">Rate</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">$${pay.ratePerKw}/kW</div>
           </div>
-        </div>
-      </div>`).join('') + `</div>`;
+          <div style="text-align:center;border-left:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600">Front-end</div>
+            <div style="font-size:13px;font-weight:700;color:var(--green)">${fmt(pay.m1)}</div>
+          </div>
+          <div style="text-align:center;border-left:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:600">Back-end</div>
+            <div style="font-size:13px;font-weight:700;color:var(--accent)">${fmt(pay.backend)}</div>
+          </div>
+        </div>` : ''}
+      </div>`;
+    }).join('') + `</div>`;
 }
 
 /* ---- Firebase Sync ---- */
