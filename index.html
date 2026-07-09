@@ -3944,6 +3944,7 @@ function dateStr(date) {
 
 function applyLeadFilters(leads) {
   return leads.filter(l => {
+    if (fuBatteryOnly && l.dealType !== 'battery') return false;
     if (fuInterestFilter !== 'all') {
       const iv = (l.interest || '').toLowerCase();
       if (fuInterestFilter === 'hot' && !iv.includes('hot')) return false;
