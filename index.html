@@ -3784,6 +3784,7 @@ let fuView = 'list';
 let fuMap = null;
 let fuSearch = '';
 let fuSort = 'date';
+let fuGroupBy = 'city'; // 'city' | 'interest' | 'none'
 
 function setLeadSearch(val) { fuSearch = val.trim().toLowerCase(); renderLeads(); }
 function setLeadSort(val) { fuSort = val; renderLeads(); }
