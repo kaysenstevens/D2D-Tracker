@@ -4147,22 +4147,44 @@ function renderLeads() {
 
   const sorted = sortLeads(leads);
 
-  // Group by city
-  const cities = {};
-  sorted.forEach(l => {
-    const city = (l.city || 'Other').trim();
-    if (!cities[city]) cities[city] = [];
-    cities[city].push(l);
-  });
+  // Build groups based on fuGroupBy
+  const INTEREST_ORDER = ['Hot','Warm','Cold',''];
+  let groups; // Array of { key, label, leads }
+  if (fuGroupBy === 'interest') {
+    const byInterest = {};
+    sorted.forEach(l => {
+      const key = (l.interest || '').trim();
+      if (!byInterest[key]) byInterest[key] = [];
+      byInterest[key].push(l);
+    });
+    groups = INTEREST_ORDER
+      .filter(k => byInterest[k])
+      .map(k => ({ key: k, label: k || 'No interest set', leads: byInterest[k] }));
+    Object.keys(byInterest).filter(k => !INTEREST_ORDER.includes(k)).forEach(k =>
+      groups.push({ key: k, label: k, leads: byInterest[k] })
+    );
+  } else if (fuGroupBy === 'city') {
+    const byCity = {};
+    sorted.forEach(l => {
+      const city = (l.city || 'Other').trim();
+      if (!byCity[city]) byCity[city] = [];
+      byCity[city].push(l);
+    });
+    groups = Object.entries(byCity).map(([k, v]) => ({ key: k, label: k, leads: v }));
+  } else {
+    groups = [{ key: '__all', label: null, leads: sorted }];
+  }
 
   const totalShown = leads.length;
   const totalAll = allLeads.length;
   const countLabel = totalShown < totalAll ? `${totalShown} of ${totalAll}` : `${totalAll}`;
 
+  const interestIcon = { Hot: '🔥', Warm: '👍', Cold: '❄️' };
+
   el.innerHTML = `<div class="section-head"><h2><i class="ti ti-users"></i> Leads</h2><span style="font-size:12px;color:var(--text3)">${countLabel} leads</span></div>` +
-    Object.entries(cities).map(([city, cityLeads]) => {
-      const collapsed = collapsedCities.has(city);
-      const cards = cityLeads.map(l => {
+    groups.map(({ key, label, leads: groupLeads }) => {
+      const collapsed = fuGroupBy !== 'none' && collapsedCities.has(key);
+      const cards = groupLeads.map(l => {
         const d = l.followUpDate ? daysUntil(l.followUpDate) : null;
         let fuTag = '', cardCls = '';
         if (d !== null) {
