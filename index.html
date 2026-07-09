@@ -4278,10 +4278,18 @@ async function renderLeadsMap() {
 }
 
 /* Lead modal */
+let leadDealType = 'solar';
+function setLeadDealType(t) {
+  leadDealType = t;
+  document.getElementById('ld-deal-solar').classList.toggle('active', t === 'solar');
+  document.getElementById('ld-deal-battery').classList.toggle('active', t === 'battery');
+}
+
 function openLeadModal(idx) {
   editingLeadIdx = idx !== undefined ? idx : null;
   const lead = editingLeadIdx !== null ? getLeads()[editingLeadIdx] : null;
   document.getElementById('lead-modal-title').textContent = lead ? 'Edit lead' : 'Add lead';
+  setLeadDealType(lead?.dealType || 'solar');
   document.getElementById('ld-name').value = lead?.name || '';
   document.getElementById('ld-city').value = lead?.city || '';
   document.getElementById('ld-phone').value = lead?.phone || '';
