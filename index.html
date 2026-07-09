@@ -4224,10 +4224,16 @@ function renderLeads() {
         </div>`;
       }).join('');
 
+      if (fuGroupBy === 'none') {
+        return `<div class="city-cards">${cards}</div>`;
+      }
+      const headerLabel = fuGroupBy === 'interest'
+        ? `${interestIcon[label] || ''} ${label}`.trim()
+        : label;
       return `<div class="city-group">
-        <div class="city-header" onclick="toggleCityGroup('${city.replace(/'/g,"\\'")}')">
-          <span class="city-label">${city}</span>
-          <span class="city-count">${cityLeads.length}</span>
+        <div class="city-header" onclick="toggleCityGroup('${key.replace(/'/g,"\\'")}')">
+          <span class="city-label">${headerLabel}</span>
+          <span class="city-count">${groupLeads.length}</span>
           <i class="ti ti-chevron-down city-chevron${collapsed?' collapsed':''}"></i>
         </div>
         <div class="city-cards${collapsed?' hidden':''}">
