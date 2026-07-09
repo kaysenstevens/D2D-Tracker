@@ -3771,6 +3771,15 @@ function renderEvents() {
 /* ---- Leads filters & view state ---- */
 let fuInterestFilter = 'all';
 let fuUrgencyFilter = 'all';
+let fuBatteryOnly = false;
+
+function toggleBatteryFilter(btn) {
+  fuBatteryOnly = !fuBatteryOnly;
+  btn.classList.toggle('active', fuBatteryOnly);
+  renderLeads();
+  if (fuView === 'map') renderLeadsMap();
+  if (fuView === 'cal') renderCalendar();
+}
 let fuView = 'list';
 let fuMap = null;
 let fuSearch = '';
