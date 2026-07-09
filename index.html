@@ -3914,6 +3914,7 @@ function renderCalDayPanel(ds, dayLeads) {
         ${l.notes ? `<div class="lead-notes">${l.notes.substring(0,100)}${l.notes.length>100?'…':''}</div>` : ''}
       </div>
       <div class="lead-right">
+        ${l.dealType === 'battery' ? '<span class="interest-pill" style="background:var(--blue-bg);color:var(--blue)">🔋 Battery</span>' : ''}
         ${l.interest ? `<span class="interest-pill">${l.interest}</span>` : ''}
         ${l.needsGift ? '<span class="gift-badge">🎁 Gift</span>' : ''}
       </div>
