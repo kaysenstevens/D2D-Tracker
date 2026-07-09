@@ -3794,6 +3794,7 @@ let fuGroupBy = 'city'; // 'city' | 'interest' | 'none'
 
 function setLeadSearch(val) { fuSearch = val.trim().toLowerCase(); renderLeads(); }
 function setLeadSort(val) { fuSort = val; renderLeads(); }
+function setLeadGroup(val) { fuGroupBy = val; renderLeads(); }
 
 function setInterestFilter(val, btn) {
   fuInterestFilter = val;
