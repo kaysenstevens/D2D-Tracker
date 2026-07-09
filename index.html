@@ -4148,12 +4148,13 @@ function renderLeads() {
   const sorted = sortLeads(leads);
 
   // Build groups based on fuGroupBy
-  const INTEREST_ORDER = ['Hot','Warm','Cold',''];
+  const INTEREST_ORDER = ['Hot','Warm','Cold','Closed',''];
   let groups; // Array of { key, label, leads }
   if (fuGroupBy === 'interest') {
     const byInterest = {};
     sorted.forEach(l => {
-      const key = (l.interest || '').trim();
+      let key = (l.interest || '').trim().toLowerCase();
+      key = key ? key.charAt(0).toUpperCase() + key.slice(1) : '';
       if (!byInterest[key]) byInterest[key] = [];
       byInterest[key].push(l);
     });
