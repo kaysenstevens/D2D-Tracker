@@ -764,6 +764,12 @@
             <option value="contacted-old">Least recently contacted</option>
             <option value="name">Name A–Z</option>
           </select>
+          <select id="fu-group" onchange="setLeadGroup(this.value)"
+            style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;cursor:pointer">
+            <option value="city">Group: City</option>
+            <option value="interest">Group: Interest</option>
+            <option value="none">No grouping</option>
+          </select>
         </div>
         <div class="fu-toolbar">
           <div class="filter-group" id="fu-interest-filters">
