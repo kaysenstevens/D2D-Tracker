@@ -481,6 +481,7 @@ const VIEWS = [
   { id: 'stats',     label: 'Stats',     icon: 'ti-chart-bar' },
   { id: 'templates', label: 'Templates', icon: 'ti-message-2' },
   { id: 'import',    label: 'Import',    icon: 'ti-file-import' },
+  { id: 'muse',      label: 'Muse',      icon: 'ti-sparkles' },
 ];
 
 function setView(v) { view = v; localSet('recruit_view', v); render(); document.getElementById('view').scrollTop = 0; }
@@ -502,6 +503,7 @@ function render() {
   else if (view === 'stats') renderStats(el);
   else if (view === 'templates') renderTemplates(el);
   else if (view === 'import') renderImport(el);
+  else if (view === 'muse') renderMuse(el);
   updateSyncUI();
 }
 
@@ -889,6 +891,222 @@ function doImport() {
   save(); importRows = [];
   toast(`Added ${add.length} recruit${add.length === 1 ? '' : 's'}`);
   setView('today');
+}
+
+/* ============ Muse (AI assistant) ============ */
+// Muse gets a readable snapshot of the pipeline and sends back a JSON list of changes.
+// Changes run through applyOps() on a copy first, so the preview shows exactly what Apply will do.
+const MUSE_BACKUP_KEY = 'recruit_crm_before_muse';
+const EDITABLE_FIELDS = ['name', 'phone', 'email', 'city', 'instagram', 'howKnow', 'referredBy', 'source', 'temp', 'notes'];
+let musePlan = null;
+
+function isoLocal(t) { return t ? toDTInput(t) : null; }
+function museSnapshot() {
+  return {
+    today: toDateInput(Date.now()),
+    settings: { me: state.settings.me, warmDays: state.settings.warmDays, coldDays: state.settings.coldDays },
+    stages: STAGES.map(s => s.id),
+    sources: SOURCES.map(s => s.id),
+    recruits: state.recruits.map(r => ({
+      id: r.id, name: r.name, phone: r.phone, email: r.email, city: r.city, instagram: r.instagram,
+      howKnow: r.howKnow, referredBy: r.referredBy, source: r.source, temp: r.temp, stage: r.stage,
+      added: isoLocal(r.createdAt), lastContact: isoLocal(r.lastTouchAt), lastReply: isoLocal(r.lastReplyAt),
+      due: isActive(r) ? toDateInput(dueAt(r)) : null, interviewAt: isoLocal(r.interviewAt),
+      revisitOn: r.stage === 'dead' && r.reviveAt ? toDateInput(r.reviveAt) : null, deadReason: r.deadReason || undefined,
+      notes: r.notes || undefined,
+      history: r.touches.slice(0, 8).map(t => ({ at: isoLocal(t.at), type: t.type, note: t.note || undefined, replied: t.replied || undefined })),
+    })),
+    templates: state.templates.map(t => ({ name: t.name, body: t.body })),
+  };
+}
+function musePrompt() {
+  return `You are Muse, my recruiting assistant for my life insurance agency. Below is my recruiting CRM as JSON.
+
+Help me with whatever I ask (who to reach out to, drafting messages, cleaning up data, spotting who's stalling). When I want the CRM changed, reply with ONE JSON code block in this exact format and I'll paste it into the app:
+
+{"changes": [
+  {"op": "add", "name": "Full Name", "phone": "", "email": "", "city": "", "instagram": "", "source": "d2d|social|referral|other", "temp": "warm|cold", "stage": "prospect", "notes": ""},
+  {"op": "update", "id": "<recruit id>", "fields": {"phone": "...", "temp": "cold", "notes": "..."}},
+  {"op": "log", "id": "<recruit id>", "type": "text|call|dm|inperson|note", "note": "what happened", "replied": true},
+  {"op": "move", "id": "<recruit id>", "stage": "<stage id>", "interviewAt": "2026-10-02T18:00", "revisitInDays": 60, "reason": "why dead"},
+  {"op": "snooze", "id": "<recruit id>", "until": "2026-10-05"},
+  {"op": "delete", "id": "<recruit id>"},
+  {"op": "template", "name": "Template name", "body": "Hey {first}, ..."}
+]}
+
+Rules: use the exact ids from the data. Stages: prospect, reached, interview_set, interview_had, committed, licensed, dead. interviewAt is only for interview_set; revisitInDays (30/60/90, or 0 for never) and reason are only for dead. Updatable fields: ${EDITABLE_FIELDS.join(', ')}. Template placeholders: {first} {name} {me} {interview}. Only delete when I explicitly ask.
+
+CRM DATA:
+${JSON.stringify(museSnapshot(), null, 1)}`;
+}
+
+function extractJson(text) {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fence ? fence[1] : text;
+  const start = body.search(/[\[{]/);
+  if (start < 0) throw new Error('No JSON found');
+  const data = JSON.parse(body.slice(start, Math.max(body.lastIndexOf('}'), body.lastIndexOf(']')) + 1));
+  const ops = Array.isArray(data) ? data : (data.changes || data.ops);
+  if (!Array.isArray(ops)) throw new Error('Expected {"changes": [...]}');
+  return ops;
+}
+function parseWhen(v, dateOnly) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return v;
+  const t = dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(v) ? fromDateInput(v) : new Date(v).getTime();
+  if (isNaN(t)) throw new Error('bad date "' + v + '"');
+  return t;
+}
+// Applies ops to target state `s` (mutates it). Returns one line per op; invalid ops are skipped, not fatal.
+function applyOps(s, ops) {
+  const find = op => {
+    let r = op.id && s.recruits.find(x => x.id === op.id);
+    if (!r && op.name && op.op !== 'add') {
+      const hits = s.recruits.filter(x => (x.name || '').trim().toLowerCase() === String(op.name).trim().toLowerCase());
+      if (hits.length > 1) throw new Error(`${hits.length} recruits named "${op.name}", use id`);
+      r = hits[0];
+    }
+    if (!r) throw new Error('recruit not found (' + (op.id || op.name || 'no id') + ')');
+    return r;
+  };
+  const withState = fn => { const saved = state; state = s; try { return fn(); } finally { state = saved; } };
+  return ops.map(op => {
+    try {
+      if (!op || typeof op !== 'object') throw new Error('not an object');
+      switch (op.op) {
+        case 'add': {
+          if (!String(op.name || '').trim()) throw new Error('name required');
+          const fields = {};
+          EDITABLE_FIELDS.forEach(k => { if (op[k] != null) fields[k] = String(op[k]); });
+          if (fields.source && !SOURCES.some(x => x.id === fields.source)) fields.source = 'other';
+          if (fields.temp && !['warm', 'cold'].includes(fields.temp)) throw new Error('temp must be warm or cold');
+          const r = newRecruit(fields);
+          const stage = op.stage || 'prospect';
+          if (stageIdx(stage) < 0 || stage === 'dead') throw new Error('bad stage "' + stage + '"');
+          r.stage = stage; r.maxStage = stageIdx(stage);
+          s.recruits.push(r);
+          return { ok: true, text: `Add ${r.name} (${stageLabel(stage)}, ${r.temp})` };
+        }
+        case 'update': {
+          const r = find(op), f = op.fields || {};
+          const keys = Object.keys(f);
+          if (!keys.length) throw new Error('no fields');
+          const bad = keys.filter(k => !EDITABLE_FIELDS.includes(k));
+          if (bad.length) throw new Error('can\'t edit ' + bad.join(', '));
+          if (f.temp && !['warm', 'cold'].includes(f.temp)) throw new Error('temp must be warm or cold');
+          if (f.source && !SOURCES.some(x => x.id === f.source)) throw new Error('bad source "' + f.source + '"');
+          if ('name' in f && !String(f.name).trim()) throw new Error('name can\'t be blank');
+          keys.forEach(k => { r[k] = f[k] == null ? '' : String(f[k]); });
+          touchR(r);
+          return { ok: true, text: `Update ${r.name}: ${keys.join(', ')}` };
+        }
+        case 'log': {
+          const r = find(op);
+          const type = op.type || 'note';
+          if (!TOUCHES[type] || type === 'stage') throw new Error('bad type "' + type + '"');
+          withState(() => logTouch(r, type, op.note || '', !!op.replied));
+          return { ok: true, text: `Log ${TOUCHES[type].label.toLowerCase()} for ${r.name}${op.replied ? ' (responded)' : ''}${op.note ? ': ' + op.note : ''}` };
+        }
+        case 'move': {
+          const r = find(op);
+          if (stageIdx(op.stage) < 0) throw new Error('bad stage "' + op.stage + '"');
+          let extra = '';
+          if (op.stage === 'interview_set' && op.interviewAt) { r.interviewAt = parseWhen(op.interviewAt); extra = ' · ' + fmtDateTime(r.interviewAt); }
+          withState(() => applyStage(r, op.stage));
+          if (op.stage === 'dead') {
+            const days = op.revisitInDays == null ? 60 : Number(op.revisitInDays) || 0;
+            r.deadAt = Date.now(); r.deadReason = op.reason || r.deadReason || '';
+            r.reviveAt = days ? addDays(Date.now(), days) : null; r.nextAt = null;
+            extra = days ? ` · revisit in ${days} days` : ' · never revisit';
+          }
+          return { ok: true, text: `Move ${r.name} → ${stageLabel(op.stage)}${extra}` };
+        }
+        case 'snooze': {
+          const r = find(op);
+          r.nextAt = parseWhen(op.until, true); touchR(r);
+          return { ok: true, text: r.nextAt ? `Snooze ${r.name} until ${fmtDate(r.nextAt)}` : `Clear snooze for ${r.name}` };
+        }
+        case 'delete': {
+          const r = find(op);
+          s.recruits = s.recruits.filter(x => x.id !== r.id);
+          s.deleted.push(r.id);
+          return { ok: true, danger: true, text: `DELETE ${r.name}` };
+        }
+        case 'template': {
+          const name = String(op.name || '').trim(), body = String(op.body || '').trim();
+          if (!name || !body) throw new Error('name and body required');
+          const t = s.templates.find(x => x.name.toLowerCase() === name.toLowerCase());
+          if (t) t.body = body; else s.templates.push({ id: uid(), name, body });
+          return { ok: true, text: `${t ? 'Update' : 'Add'} template "${name}"` };
+        }
+        default: throw new Error('unknown op "' + op.op + '"');
+      }
+    } catch (e) {
+      return { ok: false, text: `Skipped ${op && op.op || 'change'}: ${e.message}` };
+    }
+  });
+}
+
+function renderMuse(el) {
+  const backup = localGet(MUSE_BACKUP_KEY);
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title"><i class="ti ti-sparkles"></i> 1 · Give Muse your pipeline</div>
+      <div class="hint" style="margin:-4px 0 12px">Copies every recruit, their stage, history and who's due, plus instructions so Muse answers with changes this app can apply. Paste it into Muse, then ask for what you need.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="copyForMuse()"><i class="ti ti-copy"></i> Copy for Muse</button>
+        <button class="btn" onclick="download('recruits-for-muse-' + toDateInput(Date.now()) + '.txt', musePrompt(), 'text/plain')"><i class="ti ti-download"></i> Download as file</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-wand"></i> 2 · Apply Muse's changes</div>
+      <div class="hint" style="margin:-4px 0 12px">Paste Muse's reply. Nothing changes until you review the preview and tap Apply.</div>
+      <div class="form-group"><textarea class="textarea" id="muse-in" style="min-height:140px;font-family:monospace;font-size:12px" placeholder='{"changes": [ ... ]}'></textarea></div>
+      <button class="btn" onclick="previewMuse()"><i class="ti ti-eye"></i> Preview changes</button>
+      <div id="muse-preview"></div>
+      ${backup ? `<button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="undoMuse(true)"><i class="ti ti-arrow-back-up"></i> Undo last Muse changes</button>` : ''}
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-code"></i> Direct access &amp; coding</div>
+      <div class="hint" style="line-height:1.6">If Muse can run code, it can read and edit this database directly with <code>tools/crm.mjs</code> (pull → edit → push, with a safety check against overwriting your newer changes). To help build features, point Muse at <code>AGENTS.md</code> in the repo: it explains how the app is built, the data format, and how to test.</div>
+    </div>`;
+}
+function copyForMuse() {
+  const text = musePrompt();
+  const done = () => toast(`Copied ${state.recruits.length} recruits for Muse`);
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('Copy failed, use Download instead'); }
+  ta.remove();
+}
+function previewMuse() {
+  const out = document.getElementById('muse-preview');
+  let ops;
+  try { ops = extractJson(document.getElementById('muse-in').value); }
+  catch (e) { musePlan = null; out.innerHTML = `<div class="hint" style="color:var(--red);margin-top:10px">Couldn't read that: ${esc(e.message)}. Ask Muse to reply with the JSON block only.</div>`; return; }
+  const draft = normalize(JSON.parse(JSON.stringify(state)));
+  const results = applyOps(draft, ops);
+  const okCount = results.filter(r => r.ok).length;
+  musePlan = okCount ? draft : null;
+  out.innerHTML = `<div class="timeline" style="margin:12px 0">${results.map(r => `<div class="tl-item"><div class="tl-icon" style="color:${!r.ok ? 'var(--amber)' : r.danger ? 'var(--red)' : 'var(--green)'}"><i class="ti ${r.ok ? (r.danger ? 'ti-trash' : 'ti-check') : 'ti-alert-triangle'}"></i></div><div class="tl-body" style="${r.danger ? 'color:var(--red)' : r.ok ? '' : 'color:var(--text2)'}">${esc(r.text)}</div></div>`).join('')}</div>
+    ${okCount ? `<button class="btn btn-primary btn-block" onclick="applyMuse()"><i class="ti ti-check"></i> Apply ${okCount} change${okCount === 1 ? '' : 's'}</button>` : '<div class="hint">Nothing valid to apply.</div>'}`;
+}
+function applyMuse() {
+  if (!musePlan) return;
+  localSet(MUSE_BACKUP_KEY, JSON.stringify(state));
+  state = musePlan; musePlan = null;
+  save(); render(); toast('Muse changes applied', 'Undo', () => undoMuse(false));
+}
+function undoMuse(ask) {
+  const b = localGet(MUSE_BACKUP_KEY); if (!b) return;
+  if (ask && !confirm('Restore your data to right before the last Muse changes? Anything you changed since then is undone too.')) return;
+  try { state = normalize(JSON.parse(b)); } catch (e) { return toast('Backup unreadable'); }
+  try { localStorage.removeItem(MUSE_BACKUP_KEY); } catch (e) {}
+  save(); render(); toast('Muse changes undone');
 }
 
 /* ============ Sheets ============ */

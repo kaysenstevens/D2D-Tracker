@@ -1,0 +1,5 @@
+# Recruit CRM data pulled with tools/crm.mjs: real people's contact info, never commit
+recruits.json
+*.meta.json
+backups/
+.env
