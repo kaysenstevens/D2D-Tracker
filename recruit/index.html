@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Recruit CRM</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --bg2: #18181f;
+    --bg3: #21212b;
+    --surface: #1e1e28;
+    --surface2: #272733;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f5;
+    --text2: #9090a8;
+    --text3: #5a5a70;
+    --accent: #6c63ff;
+    --accent2: #8b85ff;
+    --accent-bg: rgba(108,99,255,0.15);
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.12);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245,158,11,0.12);
+    --blue: #3b82f6;
+    --blue-bg: rgba(59,130,246,0.12);
+    --purple: #a855f7;
+    --purple-bg: rgba(168,85,247,0.12);
+    --teal: #14b8a6;
+    --teal-bg: rgba(20,184,166,0.12);
+    --gray-bg: rgba(144,144,168,0.12);
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+  body { color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
+  button { font-family: inherit; font-size: inherit; color: inherit; }
+  input, select, textarea { font-family: inherit; font-size: 16px; }
+
+  .app { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; }
+  .sidebar-logo { padding: 0 20px 24px; display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 17px; }
+  .sidebar-logo span { font-size: 15px; font-weight: 600; }
+  .nav-section { padding: 0 12px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; color: var(--text2); font-size: 13px; transition: all 0.15s; margin-bottom: 2px; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: var(--accent-bg); color: var(--accent2); }
+  .nav-item i { font-size: 16px; }
+  .nav-badge { margin-left: auto; background: var(--amber); color: #000; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 7px; }
+  .sidebar-bottom { margin-top: auto; padding: 0 12px; }
+  .sync-btn.synced { color: var(--green); }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--border); }
+  .topbar h1 { font-size: 18px; font-weight: 600; }
+  .topbar-sub { color: var(--text2); font-size: 12px; margin-top: 2px; }
+  .view { flex: 1; overflow-y: auto; padding: 20px 24px 40px; }
+  .view.board-view { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 16px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; white-space: nowrap; text-decoration: none; }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-danger { color: var(--red); border-color: rgba(239,68,68,0.3); background: var(--red-bg); }
+  .btn-ghost { background: none; border-color: transparent; color: var(--text2); }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+  .btn-block { width: 100%; }
+  .btn i { font-size: 15px; }
+
+  /* Chips */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border2); background: none; cursor: pointer; font-size: 12px; color: var(--text2); }
+  .chip.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent2); }
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .tag-warm { background: var(--amber-bg); color: var(--amber); }
+  .tag-cold { background: var(--blue-bg); color: var(--blue); }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .card + .card { margin-top: 14px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; }
+  .section-title:first-child { margin-top: 0; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .stat-val { font-size: 22px; font-weight: 700; }
+  .stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .search { flex: 1; min-width: 180px; position: relative; }
+  .search i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); }
+  .search input { width: 100%; padding: 8px 12px 8px 32px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; }
+  .search input:focus { border-color: var(--accent); }
+
+  /* Recruit rows */
+  .rlist { display: flex; flex-direction: column; gap: 8px; }
+  .rrow { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .rrow.due { border-left-color: var(--amber); }
+  .rrow.overdue { border-left-color: var(--red); }
+  .rrow.done-today { opacity: 0.55; }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; color: var(--text2); flex-shrink: 0; }
+  .rmain { flex: 1; min-width: 0; cursor: pointer; }
+  .rname { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .rmeta { color: var(--text2); font-size: 12px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rmeta .hot { color: var(--amber); font-weight: 600; }
+  .rmeta .red { color: var(--red); font-weight: 600; }
+  .rmeta .ok { color: var(--green); font-weight: 600; }
+  .ractions { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; text-decoration: none; }
+  .icon-btn:hover { background: var(--surface2); }
+  .icon-btn.done { background: var(--green-bg); color: var(--green); border-color: rgba(34,197,94,0.3); }
+  .icon-btn.muted { opacity: 0.35; pointer-events: none; }
+
+  .stage-pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .s-prospect { background: var(--gray-bg); color: var(--text2); }
+  .s-reached { background: var(--blue-bg); color: var(--blue); }
+  .s-interview_set { background: var(--purple-bg); color: var(--purple); }
+  .s-interview_had { background: var(--teal-bg); color: var(--teal); }
+  .s-committed { background: var(--amber-bg); color: var(--amber); }
+  .s-licensed { background: var(--green-bg); color: var(--green); }
+  .s-dead { background: var(--red-bg); color: var(--red); }
+
+  .banner { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px; }
+  .banner i.lead { font-size: 20px; }
+  .banner .grow { flex: 1; min-width: 0; }
+  .banner-title { font-weight: 600; font-size: 13px; }
+  .banner-sub { color: var(--text2); font-size: 12px; margin-top: 2px; }
+
+  .empty { text-align: center; color: var(--text2); padding: 40px 20px; }
+  .empty i { font-size: 36px; color: var(--text3); display: block; margin-bottom: 10px; }
+  .empty-title { color: var(--text); font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+
+  /* Board */
+  .board { flex: 1; display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden; padding-bottom: 8px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .col { width: 250px; flex-shrink: 0; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column; max-height: 100%; scroll-snap-align: start; }
+  .col.drag-over { border-color: var(--accent); background: var(--accent-bg); }
+  .col-head { padding: 12px 12px 8px; display: flex; align-items: center; justify-content: space-between; }
+  .col-head .count { color: var(--text2); font-size: 12px; font-weight: 600; }
+  .col-body { flex: 1; overflow-y: auto; padding: 4px 8px 10px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+  .kcard { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; cursor: pointer; user-select: none; }
+  .kcard:hover { border-color: var(--border2); }
+  .kcard.dragging { opacity: 0.4; }
+  .kcard-name { font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .kcard-meta { color: var(--text2); font-size: 11px; margin-top: 4px; }
+
+  /* Stats */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid2 .card + .card { margin-top: 0; }
+  .funnel-row { display: grid; grid-template-columns: 120px 1fr 44px 52px; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+  .bar-track { height: 22px; background: var(--bg3); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 6px; min-width: 2px; }
+  .funnel-row .n { text-align: right; font-weight: 600; }
+  .funnel-row .pct { text-align: right; color: var(--text2); font-size: 12px; }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { text-align: left; color: var(--text2); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .tbl td { padding: 9px 8px; border-bottom: 1px solid var(--border); }
+  .tbl td.num, .tbl th.num { text-align: right; }
+  .activity { display: flex; align-items: flex-end; gap: 4px; height: 110px; }
+  .act-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .act-bar { width: 100%; max-width: 26px; background: var(--accent); border-radius: 4px 4px 0 0; position: relative; }
+  .act-bar .reply { position: absolute; bottom: 0; left: 0; right: 0; background: var(--green); border-radius: 4px 4px 0 0; }
+  .act-lbl { font-size: 10px; color: var(--text3); }
+  .act-n { font-size: 10px; color: var(--text2); }
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--text2); margin-top: 10px; }
+  .legend span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; background: var(--accent); }
+  .legend span.g::before { background: var(--green); }
+
+  /* Forms */
+  .form-group { margin-bottom: 12px; }
+  .form-label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
+  .input, .select, .textarea { width: 100%; padding: 9px 11px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; color: var(--text); outline: none; font-size: 14px; }
+  .input:focus, .select:focus, .textarea:focus { border-color: var(--accent); }
+  .textarea { min-height: 90px; resize: vertical; line-height: 1.45; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg { display: flex; background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; padding: 7px 6px; border: none; background: none; border-radius: 6px; cursor: pointer; color: var(--text2); font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+  .seg button.active { background: var(--surface2); color: var(--text); font-weight: 600; }
+  .seg button.active.warm { background: var(--amber-bg); color: var(--amber); }
+  .seg button.active.cold { background: var(--blue-bg); color: var(--blue); }
+  .check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; padding: 6px 0; }
+  .check input { width: 18px; height: 18px; accent-color: var(--green); }
+  .hint { font-size: 12px; color: var(--text3); margin-top: 5px; line-height: 1.4; }
+  details.more { margin: 4px 0 12px; }
+  details.more summary { cursor: pointer; color: var(--accent2); font-size: 13px; padding: 6px 0; list-style: none; }
+  details.more summary::-webkit-details-marker { display: none; }
+
+  /* Sheet / modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .overlay.open { display: flex; }
+  .sheet { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-lg); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 20px; }
+  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+  .sheet-title { font-size: 17px; font-weight: 600; }
+  .sheet-sub { color: var(--text2); font-size: 12px; margin-top: 3px; }
+  .sheet-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .sheet-actions .btn { flex: 1; }
+  .stage-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+  .stage-pick button { border: 1px solid var(--border2); background: none; border-radius: 16px; padding: 6px 11px; font-size: 12px; cursor: pointer; color: var(--text2); }
+  .stage-pick button.active { border-color: currentColor; }
+  .contact-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+  .contact-bar .btn { flex-direction: column; gap: 3px; padding: 10px 4px; font-size: 11px; }
+  .contact-bar .btn i { font-size: 19px; }
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-item { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .tl-item:last-child { border-bottom: none; }
+  .tl-icon { width: 28px; height: 28px; border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; color: var(--text2); flex-shrink: 0; font-size: 14px; }
+  .tl-body { flex: 1; min-width: 0; }
+  .tl-head { display: flex; justify-content: space-between; gap: 8px; }
+  .tl-date { color: var(--text3); font-size: 11px; white-space: nowrap; }
+  .tl-note { color: var(--text2); margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
+  .tpl-opt { display: block; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; margin-bottom: 8px; }
+  .tpl-opt:hover { border-color: var(--accent); }
+  .tpl-opt-name { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+  .tpl-opt-body { color: var(--text2); font-size: 12px; line-height: 1.4; white-space: pre-wrap; }
+  .preview-tbl { max-height: 280px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; margin: 12px 0; }
+  .dup { color: var(--amber); font-size: 11px; }
+
+  .toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%) translateY(120px); background: var(--surface2); border: 1px solid var(--border2); padding: 10px 14px; border-radius: 10px; font-size: 13px; z-index: 200; transition: transform 0.25s; display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); max-width: calc(100vw - 32px); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast button { background: none; border: none; color: var(--accent2); font-weight: 600; cursor: pointer; }
+
+  .mnav, .fab { display: none; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .topbar { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top)); }
+    .topbar .btn-add { display: none; }
+    .view { padding: 14px 16px 110px; }
+    .view.board-view { padding-bottom: 80px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .grid2 { grid-template-columns: 1fr; }
+    .rrow { flex-wrap: wrap; padding: 12px; }
+    .rmain { flex: 1 1 calc(100% - 50px); }
+    .ractions { width: 100%; padding-left: 50px; }
+    .ractions .icon-btn { flex: 1; }
+    .funnel-row { grid-template-columns: 96px 1fr 34px 44px; gap: 8px; font-size: 12px; }
+    .overlay { padding: 0; align-items: flex-end; }
+    .sheet { max-width: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+    .col { width: 78vw; }
+    .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+    .mnav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); border-top: 1px solid var(--border); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); z-index: 50; }
+    .mnav button { flex: 1; background: none; border: none; color: var(--text3); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; padding: 4px 0; cursor: pointer; position: relative; }
+    .mnav button i { font-size: 21px; }
+    .mnav button.active { color: var(--accent2); }
+    .mnav .dot { position: absolute; top: 0; left: calc(50% + 6px); background: var(--amber); color: #000; font-size: 9px; font-weight: 700; border-radius: 8px; padding: 0 5px; }
+    .fab { display: flex; position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #fff; border: none; font-size: 26px; align-items: center; justify-content: center; box-shadow: 0 6px 20px rgba(108,99,255,0.45); z-index: 60; cursor: pointer; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon"><i class="ti ti-users-group"></i></div><span>Recruit CRM</span></div>
+    <div class="nav-section" id="side-nav"></div>
+    <div class="sidebar-bottom">
+      <button class="nav-item sync-btn" id="sync-btn" onclick="openSync()"><i class="ti ti-cloud-off" id="sync-icon"></i><span id="sync-label">Sync off</span></button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div><h1 id="view-title">Today</h1><div class="topbar-sub" id="view-sub"></div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="icon-btn" id="sync-btn-m" style="display:none" onclick="openSync()"><i class="ti ti-cloud-off" id="sync-icon-m"></i></button>
+        <button class="btn btn-primary btn-add" onclick="openAdd()"><i class="ti ti-plus"></i> Add recruit</button>
+      </div>
+    </header>
+    <div class="view" id="view"></div>
+  </main>
+</div>
+<nav class="mnav" id="mnav"></nav>
+<button class="fab" onclick="openAdd()" aria-label="Add recruit"><i class="ti ti-plus"></i></button>
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"><span id="toast-msg"></span><button id="toast-action" style="display:none"></button></div>
+
+<script>
+/* ============ Constants ============ */
+const STORE_KEY = 'recruit_crm_v1';
+const CLOUD_COLLECTION = 'recruit_crm';
+const DAY = 86400000;
+
+const STAGES = [
+  { id: 'prospect',      label: 'Prospect',      icon: 'ti-user' },
+  { id: 'reached',       label: 'Reached Out',   icon: 'ti-send' },
+  { id: 'interview_set', label: 'Interview Set', icon: 'ti-calendar-event' },
+  { id: 'interview_had', label: 'Interview Had', icon: 'ti-messages' },
+  { id: 'committed',     label: 'Committed',     icon: 'ti-handshake' },
+  { id: 'licensed',      label: 'Licensed',      icon: 'ti-certificate' },
+  { id: 'dead',          label: 'Dead',          icon: 'ti-skull' },
+];
+const INACTIVE = ['licensed', 'dead'];
+const SOURCES = [
+  { id: 'd2d',      label: 'Solar / D2D' },
+  { id: 'social',   label: 'Social media' },
+  { id: 'referral', label: 'Referral / warm market' },
+  { id: 'other',    label: 'Other' },
+];
+const TOUCHES = {
+  text:     { label: 'Text',      icon: 'ti-message' },
+  call:     { label: 'Call',      icon: 'ti-phone' },
+  dm:       { label: 'IG DM',     icon: 'ti-brand-instagram' },
+  inperson: { label: 'In person', icon: 'ti-user-check' },
+  note:     { label: 'Note',      icon: 'ti-note' },
+  stage:    { label: 'Stage',     icon: 'ti-arrow-right' },
+};
+const DEFAULT_TEMPLATES = [
+  { name: 'Warm opener', body: "Hey {first}! Random question. I'm building out my own life insurance agency and you were one of the first people I thought of. Not a pitch, I just think you'd be great at it. Open to a 15-min call this week so I can show you what I'm doing?" },
+  { name: 'Solar / D2D rep opener', body: "Hey {first}! You already know how to knock and close. I'm starting my own life insurance agency and looking for people who can actually sell. Same skills, different product. Worth a 15-min call to hear it out?" },
+  { name: 'Cold opener', body: "Hey {first}, this is {me}. I'm building a team in the life insurance space and looking for a few sharp, coachable people who want more control over their income. Would you be open to a quick 15-min call to see if it's a fit? No pressure either way." },
+  { name: 'Follow-up', body: "Hey {first}, just circling back on my last message. Still open to a quick call this week? Totally fine if the timing isn't right." },
+  { name: 'Interview confirm', body: "Hey {first}! Confirming our call {interview}. Looking forward to it. Bring any questions you've got." },
+  { name: 'Checking back in', body: "Hey {first}, it's been a minute! Hope things are going well. A lot has been moving on my end with the agency. Open to catching up sometime this week?" },
+];
+
+/* ============ State ============ */
+let state = loadState();
+let view = localGet('recruit_view') || 'today';
+let todayFilter = 'all';
+let todaySearch = '';
+let boardSearch = '';
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function localGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function localSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+function defaultState() {
+  return {
+    v: 1,
+    recruits: [],
+    templates: DEFAULT_TEMPLATES.map(t => ({ id: uid(), ...t })),
+    settings: { me: '', warmDays: 2, coldDays: 1 },
+    deleted: [],
+  };
+}
+function normalize(s) {
+  const d = defaultState();
+  s = s && typeof s === 'object' ? s : d;
+  s.recruits = Array.isArray(s.recruits) ? s.recruits : [];
+  s.templates = Array.isArray(s.templates) ? s.templates : d.templates;
+  s.settings = Object.assign({}, d.settings, s.settings || {});
+  s.deleted = Array.isArray(s.deleted) ? s.deleted : [];
+  s.recruits.forEach(r => { r.touches = Array.isArray(r.touches) ? r.touches : []; });
+  return s;
+}
+function loadState() {
+  try { return normalize(JSON.parse(localGet(STORE_KEY) || 'null')); } catch (e) { return defaultState(); }
+}
+function save() {
+  localSet(STORE_KEY, JSON.stringify(state));
+  pushToCloud();
+}
+function getR(id) { return state.recruits.find(r => r.id === id); }
+function touchR(r) { r.updatedAt = Date.now(); }
+
+/* ============ Date helpers ============ */
+function sod(t) { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); }
+function todayStart() { return sod(Date.now()); }
+function addDays(t, n) { const d = new Date(sod(t)); d.setDate(d.getDate() + n); return d.getTime(); }
+function daysBetween(a, b) { return Math.round((sod(b) - sod(a)) / DAY); }
+function fmtDate(t) { return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+function fmtDateTime(t) { return new Date(t).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+function fmtAgo(t) {
+  const d = daysBetween(t, Date.now());
+  if (d <= 0) return 'today';
+  if (d === 1) return 'yesterday';
+  return d + ' days ago';
+}
+function fmtRel(t) {
+  const d = daysBetween(Date.now(), t);
+  if (d === 0) return 'today';
+  if (d === 1) return 'tomorrow';
+  if (d === -1) return 'yesterday';
+  if (d > 1 && d < 7) return new Date(t).toLocaleDateString(undefined, { weekday: 'short' });
+  return fmtDate(t);
+}
+function toDateInput(t) { if (!t) return ''; const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function toDTInput(t) { if (!t) return ''; const d = new Date(t); return toDateInput(t) + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function fromDateInput(v) { if (!v) return null; const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d).getTime(); }
+function fromDTInput(v) { if (!v) return null; const t = new Date(v).getTime(); return isNaN(t) ? null : t; }
+
+/* ============ Recruit logic ============ */
+function isActive(r) { return !INACTIVE.includes(r.stage); }
+function stageIdx(id) { return STAGES.findIndex(s => s.id === id); }
+function stageLabel(id) { return (STAGES.find(s => s.id === id) || {}).label || id; }
+function sourceLabel(id) { return (SOURCES.find(s => s.id === id) || {}).label || 'Other'; }
+function intervalDays(r) { return Math.max(1, Number(r.temp === 'warm' ? state.settings.warmDays : state.settings.coldDays) || 1); }
+function dueAt(r) {
+  if (r.nextAt) return sod(r.nextAt);
+  if (!r.lastTouchAt) return sod(r.createdAt || Date.now());
+  return addDays(r.lastTouchAt, intervalDays(r));
+}
+function isDue(r) { return isActive(r) && dueAt(r) <= todayStart(); }
+function overdueDays(r) { return daysBetween(dueAt(r), Date.now()); }
+function touchedToday(r) { return r.lastTouchAt && sod(r.lastTouchAt) === todayStart(); }
+function firstName(r) { return (r.name || '').trim().split(/\s+/)[0] || ''; }
+function initials(r) { return (r.name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase(); }
+function cleanPhone(p) { return (p || '').replace(/[^\d+]/g, ''); }
+function igHandle(h) { return (h || '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/.*$/, ''); }
+// Sort key: never-contacted first (oldest added first), then longest since last contact.
+function contactSort(a, b) {
+  const ka = a.lastTouchAt || 0, kb = b.lastTouchAt || 0;
+  if (ka !== kb) return ka - kb;
+  return (a.createdAt || 0) - (b.createdAt || 0);
+}
+
+function newRecruit(fields) {
+  const now = Date.now();
+  return Object.assign({
+    id: uid(), name: '', phone: '', email: '', city: '', instagram: '', howKnow: '', referredBy: '',
+    source: 'referral', temp: 'warm', stage: 'prospect', maxStage: 0,
+    createdAt: now, updatedAt: now, lastTouchAt: null, lastReplyAt: null, nextAt: null,
+    interviewAt: null, reviveAt: null, deadReason: '', notes: '', touches: [],
+  }, fields);
+}
+
+function logTouch(r, type, note, replied) {
+  const now = Date.now();
+  r.touches.unshift({ id: uid(), at: now, type, note: note || '', replied: !!replied });
+  if (type !== 'note') {
+    r.lastTouchAt = now;
+    r.nextAt = null;
+    if (replied) r.lastReplyAt = now;
+    if (r.stage === 'prospect') applyStage(r, 'reached');
+  }
+  touchR(r);
+}
+
+function applyStage(r, stage) {
+  if (r.stage === stage) return;
+  const from = r.stage;
+  r.stage = stage;
+  if (stage !== 'dead') { r.maxStage = Math.max(r.maxStage || 0, stageIdx(stage)); r.reviveAt = null; }
+  r.touches.unshift({ id: uid(), at: Date.now(), type: 'stage', note: stageLabel(from) + ' → ' + stageLabel(stage) });
+  touchR(r);
+}
+
+// Entry point for any stage change from the UI. Some stages ask for details first.
+function moveStage(id, stage) {
+  const r = getR(id); if (!r || r.stage === stage) return;
+  if (stage === 'dead') return openDead(id);
+  if (stage === 'interview_set') return openInterview(id, true);
+  applyStage(r, stage);
+  save(); render();
+  toast(r.name + ' → ' + stageLabel(stage));
+}
+
+/* ============ Templates ============ */
+function fillTemplate(body, r) {
+  return body
+    .replace(/\{first\}/g, firstName(r))
+    .replace(/\{name\}/g, r.name || '')
+    .replace(/\{me\}/g, state.settings.me || '')
+    .replace(/\{interview\}/g, r.interviewAt ? fmtDateTime(r.interviewAt) : '(time TBD)');
+}
+function smsHref(phone, body) {
+  const p = cleanPhone(phone);
+  return 'sms:' + p + (body ? '?&body=' + encodeURIComponent(body) : '');
+}
+
+/* ============ Rendering ============ */
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+const VIEWS = [
+  { id: 'today',     label: 'Today',     icon: 'ti-checklist' },
+  { id: 'board',     label: 'Board',     icon: 'ti-layout-kanban' },
+  { id: 'stats',     label: 'Stats',     icon: 'ti-chart-bar' },
+  { id: 'templates', label: 'Templates', icon: 'ti-message-2' },
+  { id: 'import',    label: 'Import',    icon: 'ti-file-import' },
+];
+
+function setView(v) { view = v; localSet('recruit_view', v); render(); document.getElementById('view').scrollTop = 0; }
+
+function render() {
+  const dueCount = state.recruits.filter(isDue).length;
+  document.getElementById('side-nav').innerHTML = VIEWS.map(v =>
+    `<button class="nav-item ${view === v.id ? 'active' : ''}" onclick="setView('${v.id}')"><i class="ti ${v.icon}"></i>${v.label}${v.id === 'today' && dueCount ? `<span class="nav-badge">${dueCount}</span>` : ''}</button>`).join('');
+  document.getElementById('mnav').innerHTML = VIEWS.map(v =>
+    `<button class="${view === v.id ? 'active' : ''}" onclick="setView('${v.id}')"><i class="ti ${v.icon}"></i>${v.label}${v.id === 'today' && dueCount ? `<span class="dot">${dueCount}</span>` : ''}</button>`).join('');
+  const el = document.getElementById('view');
+  el.className = 'view' + (view === 'board' ? ' board-view' : '');
+  const meta = VIEWS.find(v => v.id === view) || VIEWS[0];
+  document.getElementById('view-title').textContent = meta.label;
+  const sub = document.getElementById('view-sub');
+  sub.textContent = '';
+  if (view === 'today') renderToday(el, sub);
+  else if (view === 'board') renderBoard(el, sub);
+  else if (view === 'stats') renderStats(el);
+  else if (view === 'templates') renderTemplates(el);
+  else if (view === 'import') renderImport(el);
+  updateSyncUI();
+}
+
+/* ---- Today ---- */
+function renderToday(el, sub) {
+  const active = state.recruits.filter(isActive);
+  const due = active.filter(isDue);
+  const doneToday = active.filter(touchedToday).length;
+  const t0 = todayStart();
+  sub.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
+  if (!state.recruits.length) {
+    el.innerHTML = `<div class="empty"><i class="ti ti-users-plus"></i><div class="empty-title">No recruits yet</div>
+      Add everyone you could recruit: old solar teammates, friends, people from your content.<br><br>
+      <button class="btn btn-primary" onclick="openAdd()"><i class="ti ti-plus"></i> Add recruit</button>
+      <button class="btn" onclick="setView('import')"><i class="ti ti-file-import"></i> Import a list</button></div>`;
+    return;
+  }
+
+  const interviews = state.recruits
+    .filter(r => r.stage === 'interview_set' && r.interviewAt && r.interviewAt < addDays(t0, 8))
+    .sort((a, b) => a.interviewAt - b.interviewAt);
+  const revive = state.recruits.filter(r => r.stage === 'dead' && r.reviveAt && r.reviveAt <= Date.now())
+    .sort((a, b) => a.reviveAt - b.reviveAt);
+
+  let html = `<div class="stats-row">
+    <div class="stat"><div class="stat-val" style="color:var(--amber)">${due.length}</div><div class="stat-label">Due to reach out</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--green)">${doneToday}</div><div class="stat-label">Touched today</div></div>
+    <div class="stat"><div class="stat-val">${active.length}</div><div class="stat-label">Active recruits</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--purple)">${interviews.filter(r => r.interviewAt >= t0).length}</div><div class="stat-label">Interviews next 7 days</div></div>
+  </div>`;
+
+  if (interviews.length) {
+    html += `<div class="section-title"><i class="ti ti-calendar-event"></i> Interviews</div>`;
+    html += interviews.map(r => {
+      const past = r.interviewAt < Date.now();
+      return `<div class="banner"><i class="ti ti-calendar-event lead" style="color:${past ? 'var(--red)' : 'var(--purple)'}"></i>
+        <div class="grow" onclick="openDetail('${r.id}')" style="cursor:pointer"><div class="banner-title">${esc(r.name)}</div>
+        <div class="banner-sub">${past ? '<span style="color:var(--red)">Happened? Update it</span> · ' : ''}${esc(fmtDateTime(r.interviewAt))}</div></div>
+        ${past
+          ? `<button class="btn btn-sm" onclick="moveStage('${r.id}','interview_had')"><i class="ti ti-check"></i> Had it</button>`
+          : `<button class="btn btn-sm" onclick="openText('${r.id}','Interview confirm')"><i class="ti ti-message"></i> Confirm</button>`}
+      </div>`;
+    }).join('');
+  }
+
+  if (revive.length) {
+    html += `<div class="section-title"><i class="ti ti-refresh"></i> Time to revisit</div>`;
+    html += revive.map(r => `<div class="banner"><i class="ti ti-refresh lead" style="color:var(--teal)"></i>
+      <div class="grow" onclick="openDetail('${r.id}')" style="cursor:pointer"><div class="banner-title">${esc(r.name)}</div>
+      <div class="banner-sub">Went dead ${r.deadAt ? fmtAgo(r.deadAt) : ''}${r.deadReason ? ' · ' + esc(r.deadReason) : ''}</div></div>
+      <button class="btn btn-sm btn-ghost" onclick="snoozeRevive('${r.id}')">Later</button>
+      <button class="btn btn-sm btn-primary" onclick="revive('${r.id}')"><i class="ti ti-arrow-back-up"></i> Bring back</button>
+    </div>`).join('');
+  }
+
+  const q = todaySearch.trim().toLowerCase();
+  let list = active.slice();
+  if (todayFilter === 'due') list = list.filter(isDue);
+  if (todayFilter === 'warm') list = list.filter(r => r.temp === 'warm');
+  if (todayFilter === 'cold') list = list.filter(r => r.temp === 'cold');
+  if (q) list = list.filter(r => [r.name, r.phone, r.city, r.instagram, r.email].join(' ').toLowerCase().includes(q));
+  list.sort(contactSort);
+
+  html += `<div class="section-title" style="margin-top:${interviews.length || revive.length ? 22 : 0}px"><i class="ti ti-sort-ascending"></i> Longest since last contact</div>
+  <div class="toolbar">
+    <div class="search"><i class="ti ti-search"></i><input id="today-search" placeholder="Search name, phone, city…" value="${esc(todaySearch)}" oninput="todaySearch=this.value;renderTodayList()"></div>
+    <div class="chips">
+      ${[['all', 'All active', active.length], ['due', 'Due', due.length], ['warm', 'Warm'], ['cold', 'Cold']].map(([id, label, n]) =>
+        `<button class="chip ${todayFilter === id ? 'active' : ''}" onclick="todayFilter='${id}';render()">${label}${n != null ? ' · ' + n : ''}</button>`).join('')}
+    </div>
+  </div>
+  <div class="rlist" id="today-list">${renderRows(list)}</div>`;
+  el.innerHTML = html;
+}
+function renderTodayList() {
+  // Re-render only the list so the search box keeps focus while typing.
+  const q = todaySearch.trim().toLowerCase();
+  let list = state.recruits.filter(isActive);
+  if (todayFilter === 'due') list = list.filter(isDue);
+  if (todayFilter === 'warm') list = list.filter(r => r.temp === 'warm');
+  if (todayFilter === 'cold') list = list.filter(r => r.temp === 'cold');
+  if (q) list = list.filter(r => [r.name, r.phone, r.city, r.instagram, r.email].join(' ').toLowerCase().includes(q));
+  list.sort(contactSort);
+  const el = document.getElementById('today-list');
+  if (el) el.innerHTML = renderRows(list);
+}
+
+function renderRows(list) {
+  if (!list.length) return `<div class="empty"><i class="ti ti-circle-check"></i><div class="empty-title">Nothing here</div>${todayFilter === 'due' ? "You're caught up for today." : 'No recruits match.'}</div>`;
+  return list.map(r => {
+    const due = isDue(r), od = overdueDays(r), today = touchedToday(r);
+    const cls = today ? 'done-today' : (due ? (od >= intervalDays(r) ? 'overdue' : 'due') : '');
+    let when;
+    if (!r.lastTouchAt) when = '<span class="hot">Never contacted</span>';
+    else when = today ? '<span class="ok">Touched today</span>' : `<span class="${cls === 'overdue' ? 'red' : due ? 'hot' : ''}">${fmtAgo(r.lastTouchAt)}</span>`;
+    const lastType = TOUCHES[lastTouchType(r)];
+    if (r.lastTouchAt && lastType) when += ' · ' + lastType.label;
+    if (!due && !today) when += ` · next ${fmtRel(dueAt(r))}`;
+    const extra = r.stage === 'interview_set' && r.interviewAt ? ` · 📅 ${esc(fmtRel(r.interviewAt))}` : '';
+    const ig = igHandle(r.instagram);
+    return `<div class="rrow ${cls}">
+      <div class="avatar">${esc(initials(r))}</div>
+      <div class="rmain" onclick="openDetail('${r.id}')">
+        <div class="rname">${esc(r.name)} <span class="stage-pill s-${r.stage}">${stageLabel(r.stage)}</span> <span class="tag tag-${r.temp}">${r.temp === 'warm' ? 'Warm' : 'Cold'}</span></div>
+        <div class="rmeta">${when}${extra}</div>
+      </div>
+      <div class="ractions">
+        <a class="icon-btn ${r.phone ? '' : 'muted'}" title="Call" href="tel:${esc(cleanPhone(r.phone))}" onclick="afterCall('${r.id}')"><i class="ti ti-phone"></i></a>
+        <button class="icon-btn ${r.phone ? '' : 'muted'}" title="Text" onclick="openText('${r.id}')"><i class="ti ti-message"></i></button>
+        <button class="icon-btn ${ig ? '' : 'muted'}" title="Instagram DM" onclick="openText('${r.id}',null,'dm')"><i class="ti ti-brand-instagram"></i></button>
+        <button class="icon-btn ${today ? 'done' : ''}" title="Log a touch" onclick="openLog('${r.id}')"><i class="ti ti-check"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function lastTouchType(r) { const t = r.touches.find(t => t.type !== 'note' && t.type !== 'stage'); return t ? t.type : ''; }
+
+/* ---- Board ---- */
+function renderBoard(el, sub) {
+  sub.textContent = 'Drag cards between columns · tap a card to open';
+  const q = boardSearch.trim().toLowerCase();
+  const cols = STAGES.map(s => {
+    let items = state.recruits.filter(r => r.stage === s.id);
+    if (q) items = items.filter(r => (r.name || '').toLowerCase().includes(q));
+    items.sort(s.id === 'interview_set' ? (a, b) => (a.interviewAt || Infinity) - (b.interviewAt || Infinity) : contactSort);
+    return `<div class="col" data-stage="${s.id}" ondragover="colDragOver(event,this)" ondragleave="this.classList.remove('drag-over')" ondrop="colDrop(event,this)">
+      <div class="col-head"><span class="stage-pill s-${s.id}"><i class="ti ${s.icon}"></i> ${s.label}</span><span class="count">${items.length}</span></div>
+      <div class="col-body">${items.map(kcard).join('') || '<div class="hint" style="text-align:center;padding:14px 0">Empty</div>'}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="toolbar"><div class="search" style="max-width:320px"><i class="ti ti-search"></i><input placeholder="Filter by name…" value="${esc(boardSearch)}" oninput="boardSearch=this.value;renderBoardDebounced()"></div></div><div class="board">${cols}</div>`;
+}
+let boardTimer = null;
+function renderBoardDebounced() {
+  clearTimeout(boardTimer);
+  boardTimer = setTimeout(() => {
+    const input = document.activeElement, pos = input && input.selectionStart;
+    render();
+    const again = document.querySelector('.board-view .search input');
+    if (again) { again.focus(); try { again.setSelectionRange(pos, pos); } catch (e) {} }
+  }, 150);
+}
+function kcard(r) {
+  let meta;
+  if (r.stage === 'dead') meta = r.reviveAt ? 'Revisit ' + fmtDate(r.reviveAt) : 'No revisit';
+  else if (r.stage === 'interview_set') meta = r.interviewAt ? '📅 ' + fmtDateTime(r.interviewAt) : 'No interview time set';
+  else if (r.stage === 'licensed') meta = sourceLabel(r.source);
+  else meta = r.lastTouchAt ? 'Last contact ' + fmtAgo(r.lastTouchAt) : 'Never contacted';
+  const due = isDue(r);
+  return `<div class="kcard" draggable="true" data-id="${r.id}" ondragstart="cardDragStart(event,this)" ondragend="this.classList.remove('dragging')" onclick="openDetail('${r.id}')" ${due ? 'style="border-left:3px solid var(--amber)"' : ''}>
+    <div class="kcard-name"><span>${esc(r.name)}</span><span class="tag tag-${r.temp}">${r.temp === 'warm' ? 'W' : 'C'}</span></div>
+    <div class="kcard-meta">${esc(meta)}</div>
+  </div>`;
+}
+function cardDragStart(e, el) { e.dataTransfer.setData('text/plain', el.dataset.id); e.dataTransfer.effectAllowed = 'move'; el.classList.add('dragging'); }
+function colDragOver(e, el) { e.preventDefault(); el.classList.add('drag-over'); }
+function colDrop(e, el) {
+  e.preventDefault(); el.classList.remove('drag-over');
+  const id = e.dataTransfer.getData('text/plain');
+  if (id) moveStage(id, el.dataset.stage);
+}
+
+/* ---- Stats ---- */
+function renderStats(el) {
+  const all = state.recruits;
+  if (!all.length) { el.innerHTML = `<div class="empty"><i class="ti ti-chart-bar"></i><div class="empty-title">No data yet</div>Stats show up once you start adding recruits.</div>`; return; }
+  const funnelStages = STAGES.slice(0, 6);
+  const reached = funnelStages.map((s, i) => all.filter(r => (r.maxStage || 0) >= i).length);
+  const top = reached[0] || 1;
+  const funnel = funnelStages.map((s, i) => {
+    const n = reached[i];
+    const pct = i === 0 ? '' : (reached[i - 1] ? Math.round(n / reached[i - 1] * 100) + '%' : '–');
+    return `<div class="funnel-row"><span>${s.label}</span><div class="bar-track"><div class="bar-fill" style="width:${n / top * 100}%"></div></div><span class="n">${n}</span><span class="pct">${pct}</span></div>`;
+  }).join('');
+
+  const idx = id => stageIdx(id);
+  const srcRows = SOURCES.map(s => {
+    const rs = all.filter(r => (r.source || 'other') === s.id);
+    const iv = rs.filter(r => r.maxStage >= idx('interview_had')).length;
+    const cm = rs.filter(r => r.maxStage >= idx('committed')).length;
+    const lc = rs.filter(r => r.maxStage >= idx('licensed')).length;
+    return `<tr><td>${s.label}</td><td class="num">${rs.length}</td><td class="num">${iv}</td><td class="num">${cm}</td><td class="num">${lc}</td><td class="num">${rs.length ? Math.round(cm / rs.length * 100) + '%' : '–'}</td></tr>`;
+  }).join('');
+
+  const tempRows = ['warm', 'cold'].map(t => {
+    const rs = all.filter(r => r.temp === t);
+    const iv = rs.filter(r => r.maxStage >= idx('interview_set')).length;
+    return `<tr><td>${t === 'warm' ? 'Warm' : 'Cold'}</td><td class="num">${rs.length}</td><td class="num">${iv}</td><td class="num">${rs.length ? Math.round(iv / rs.length * 100) + '%' : '–'}</td></tr>`;
+  }).join('');
+
+  // Touch activity, last 14 days
+  const t0 = todayStart();
+  const days = [];
+  for (let i = 13; i >= 0; i--) days.push(addDays(t0, -i));
+  const touches = all.flatMap(r => r.touches.filter(t => TOUCHES[t.type] && t.type !== 'note' && t.type !== 'stage'));
+  const counts = days.map(d => { const ts = touches.filter(t => sod(t.at) === d); return { n: ts.length, rep: ts.filter(t => t.replied).length }; });
+  const maxN = Math.max(1, ...counts.map(c => c.n));
+  const week = counts.slice(7).reduce((a, c) => a + c.n, 0);
+  const weekRep = counts.slice(7).reduce((a, c) => a + c.rep, 0);
+  const activity = counts.map((c, i) => `<div class="act-col"><span class="act-n">${c.n || ''}</span>
+    <div class="act-bar" style="height:${c.n / maxN * 80}%"><div class="reply" style="height:${c.n ? c.rep / c.n * 100 : 0}%"></div></div>
+    <span class="act-lbl">${new Date(days[i]).toLocaleDateString(undefined, { weekday: 'narrow' })}</span></div>`).join('');
+
+  const current = STAGES.map(s => `<div class="stat"><div class="stat-val">${all.filter(r => r.stage === s.id).length}</div><div class="stat-label"><span class="stage-pill s-${s.id}">${s.label}</span></div></div>`).join('');
+
+  el.innerHTML = `
+    <div class="stats-row">
+      <div class="stat"><div class="stat-val">${all.length}</div><div class="stat-label">Total recruits</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--accent2)">${week}</div><div class="stat-label">Touches last 7 days</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--green)">${week ? Math.round(weekRep / week * 100) : 0}%</div><div class="stat-label">Response rate (7 days)</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--green)">${reached[5]}</div><div class="stat-label">Licensed</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="card-title"><i class="ti ti-filter"></i> Funnel (ever reached)</div>${funnel}
+        <div class="hint">Percent = conversion from the stage above. Dead recruits still count for the furthest stage they reached.</div></div>
+      <div class="card"><div class="card-title"><i class="ti ti-activity"></i> Outreach, last 14 days</div><div class="activity">${activity}</div>
+        <div class="legend"><span>Touches</span><span class="g">Got a response</span></div></div>
+    </div>
+    <div class="card" style="margin-top:14px"><div class="card-title"><i class="ti ti-target-arrow"></i> Which source produces agents</div>
+      <div style="overflow-x:auto"><table class="tbl"><tr><th>Source</th><th class="num">Total</th><th class="num">Interviewed</th><th class="num">Committed</th><th class="num">Licensed</th><th class="num">Commit %</th></tr>${srcRows}</table></div></div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="card"><div class="card-title"><i class="ti ti-flame"></i> Warm vs cold</div>
+        <table class="tbl"><tr><th>Type</th><th class="num">Total</th><th class="num">Got interview</th><th class="num">Rate</th></tr>${tempRows}</table></div>
+      <div class="card"><div class="card-title"><i class="ti ti-layout-kanban"></i> Right now</div>
+        <div class="stats-row" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr));margin:0">${current}</div></div>
+    </div>`;
+}
+
+/* ---- Templates & settings ---- */
+function renderTemplates(el) {
+  const s = state.settings;
+  el.innerHTML = `
+    <div class="section-title"><i class="ti ti-message-2"></i> Message templates</div>
+    <div class="hint" style="margin:-4px 0 12px">Placeholders: <code>{first}</code> first name · <code>{name}</code> full name · <code>{me}</code> your name · <code>{interview}</code> interview date &amp; time</div>
+    ${state.templates.map(t => `<div class="card" style="cursor:pointer" onclick="openTemplate('${t.id}')">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div class="tpl-opt-name">${esc(t.name)}</div><i class="ti ti-pencil" style="color:var(--text3)"></i></div>
+      <div class="tpl-opt-body">${esc(t.body)}</div></div>`).join('')}
+    <button class="btn" style="margin-top:12px" onclick="openTemplate()"><i class="ti ti-plus"></i> New template</button>
+
+    <div class="section-title" style="margin-top:28px"><i class="ti ti-adjustments"></i> Follow-up cadence</div>
+    <div class="card">
+      <div class="form-group"><label class="form-label">Your first name (for <code>{me}</code>)</label><input class="input" id="set-me" value="${esc(s.me)}" onchange="saveSettings()"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Warm: reach out every</label><select class="select" id="set-warm" onchange="saveSettings()">${[1, 2, 3, 4, 5, 7].map(n => `<option value="${n}" ${+s.warmDays === n ? 'selected' : ''}>${n} day${n > 1 ? 's' : ''}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Cold: reach out every</label><select class="select" id="set-cold" onchange="saveSettings()">${[1, 2, 3, 4, 5, 7].map(n => `<option value="${n}" ${+s.coldDays === n ? 'selected' : ''}>${n} day${n > 1 ? 's' : ''}</option>`).join('')}</select></div>
+      </div>
+      <div class="hint">A recruit shows as <b style="color:var(--amber)">due</b> once it's been this many days since your last touch. Snooze anyone from their card to push them out.</div>
+    </div>
+
+    <div class="section-title" style="margin-top:28px"><i class="ti ti-database"></i> Your data</div>
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="openSync()"><i class="ti ti-cloud"></i> Cloud sync</button>
+        <button class="btn" onclick="exportBackup()"><i class="ti ti-download"></i> Download backup</button>
+        <label class="btn"><i class="ti ti-upload"></i> Restore backup<input type="file" accept=".json,application/json" style="display:none" onchange="restoreBackup(this)"></label>
+        <button class="btn" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export CSV</button>
+      </div>
+      <div class="hint">Everything saves on this device automatically. Turn on cloud sync to use it on your phone and computer.</div>
+    </div>`;
+}
+function saveSettings() {
+  state.settings.me = document.getElementById('set-me').value.trim();
+  state.settings.warmDays = +document.getElementById('set-warm').value;
+  state.settings.coldDays = +document.getElementById('set-cold').value;
+  save(); toast('Saved');
+}
+function openTemplate(id) {
+  const t = id ? state.templates.find(x => x.id === id) : { name: '', body: '' };
+  openSheet(`<div class="sheet-head"><div class="sheet-title">${id ? 'Edit' : 'New'} template</div><button class="icon-btn" onclick="closeSheet()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="form-label">Name</label><input class="input" id="tpl-name" value="${esc(t.name)}"></div>
+    <div class="form-group"><label class="form-label">Message</label><textarea class="textarea" id="tpl-body" style="min-height:150px">${esc(t.body)}</textarea>
+      <div class="hint">{first} · {name} · {me} · {interview}</div></div>
+    <div class="sheet-actions">${id ? `<button class="btn btn-danger" onclick="deleteTemplate('${id}')"><i class="ti ti-trash"></i> Delete</button>` : ''}
+      <button class="btn btn-primary" onclick="saveTemplate('${id || ''}')">Save</button></div>`);
+}
+function saveTemplate(id) {
+  const name = document.getElementById('tpl-name').value.trim();
+  const body = document.getElementById('tpl-body').value.trim();
+  if (!name || !body) return toast('Name and message are required');
+  if (id) Object.assign(state.templates.find(t => t.id === id), { name, body });
+  else state.templates.push({ id: uid(), name, body });
+  save(); closeSheet(); render();
+}
+function deleteTemplate(id) {
+  if (!confirm('Delete this template?')) return;
+  state.templates = state.templates.filter(t => t.id !== id);
+  save(); closeSheet(); render();
+}
+
+/* ---- Import ---- */
+let importRows = [];
+function renderImport(el) {
+  el.innerHTML = `<div class="card">
+    <div class="card-title"><i class="ti ti-file-import"></i> Bulk add recruits</div>
+    <div class="hint" style="margin:-4px 0 12px">Paste one person per line, like <code>Jake Peterson, 801-555-1234, Provo</code>, or upload a CSV exported from Google Sheets or your phone contacts. With a header row (Name, Phone, Email, City, Instagram), columns are matched automatically.</div>
+    <div class="form-group"><textarea class="textarea" id="imp-text" style="min-height:160px" placeholder="Jake Peterson, 801-555-1234, Provo&#10;Tyler Rowe, 385-555-9876&#10;Sam King, @samking"></textarea></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <label class="btn"><i class="ti ti-upload"></i> Upload CSV<input type="file" accept=".csv,.txt,text/csv,text/plain" style="display:none" onchange="importFile(this)"></label>
+      <button class="btn btn-primary" onclick="parseImport()"><i class="ti ti-eye"></i> Preview</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Source for all</label><select class="select" id="imp-source">${SOURCES.map(s => `<option value="${s.id}">${s.label}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Warm or cold</label><select class="select" id="imp-temp"><option value="warm">Warm</option><option value="cold">Cold</option></select></div>
+    </div>
+    <div id="imp-preview"></div>
+  </div>`;
+}
+function importFile(input) {
+  const f = input.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { document.getElementById('imp-text').value = reader.result; parseImport(); };
+  reader.readAsText(f);
+}
+function splitLine(line) {
+  const delim = line.includes('\t') ? '\t' : ',';
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+    else if (c === delim && !q) { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+function parseImport() {
+  const lines = document.getElementById('imp-text').value.split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return toast('Paste some names first');
+  let header = null;
+  const first = splitLine(lines[0]).map(h => h.toLowerCase());
+  if (first.some(h => /^(name|first name|full name|phone|mobile|email)$/.test(h))) { header = first; lines.shift(); }
+  const col = (...names) => header ? header.findIndex(h => names.some(n => h === n || h.includes(n))) : -1;
+  const hc = header && {
+    name: col('full name', 'name'), first: col('first name', 'first'), last: col('last name', 'last'),
+    phone: col('phone', 'mobile', 'cell'), email: col('email', 'e-mail'), city: col('city', 'location'),
+    ig: header.findIndex(h => h === 'ig' || h.includes('instagram') || h.includes('handle')), notes: col('notes', 'note'),
+  };
+  importRows = lines.map(line => {
+    const f = splitLine(line);
+    const r = { name: '', phone: '', email: '', city: '', instagram: '', notes: '' };
+    if (hc) {
+      const g = i => (i >= 0 ? f[i] || '' : '');
+      r.name = g(hc.name) || [g(hc.first), g(hc.last)].filter(Boolean).join(' ');
+      if (hc.first >= 0 && hc.name === hc.first) r.name = [g(hc.first), g(hc.last)].filter(Boolean).join(' ');
+      r.phone = g(hc.phone); r.email = g(hc.email); r.city = g(hc.city); r.instagram = g(hc.ig); r.notes = g(hc.notes);
+    } else {
+      f.forEach(v => {
+        if (!v) return;
+        if (!r.email && /\S+@\S+\.\S+/.test(v)) r.email = v;
+        else if (!r.instagram && /^@\w/.test(v)) r.instagram = v;
+        else if (!r.phone && (v.replace(/\D/g, '').length >= 7) && /^[\d\s()+.\-]+$/.test(v)) r.phone = v;
+        else if (!r.name) r.name = v;
+        else if (!r.city) r.city = v;
+        else r.notes = (r.notes ? r.notes + ' · ' : '') + v;
+      });
+    }
+    r.dup = isDuplicate(r);
+    return r;
+  }).filter(r => r.name);
+  const newCount = importRows.filter(r => !r.dup).length;
+  document.getElementById('imp-preview').innerHTML = importRows.length ? `
+    <div class="preview-tbl"><table class="tbl"><tr><th>Name</th><th>Phone</th><th>City</th><th>Instagram</th><th></th></tr>
+    ${importRows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.city)}</td><td>${esc(r.instagram)}</td><td>${r.dup ? '<span class="dup">Already added</span>' : ''}</td></tr>`).join('')}</table></div>
+    <button class="btn btn-primary btn-block" onclick="doImport()" ${newCount ? '' : 'disabled'}><i class="ti ti-check"></i> Add ${newCount} recruit${newCount === 1 ? '' : 's'}${importRows.length - newCount ? ` (skip ${importRows.length - newCount} duplicate${importRows.length - newCount === 1 ? '' : 's'})` : ''}</button>`
+    : '<div class="hint">No names found.</div>';
+}
+function isDuplicate(r) {
+  const p = cleanPhone(r.phone).replace(/^\+?1(?=\d{10}$)/, '');
+  const n = (r.name || '').trim().toLowerCase();
+  return state.recruits.some(x => {
+    const xp = cleanPhone(x.phone).replace(/^\+?1(?=\d{10}$)/, '');
+    return (p && xp && p === xp) || (n && (x.name || '').trim().toLowerCase() === n);
+  });
+}
+function doImport() {
+  const source = document.getElementById('imp-source').value;
+  const temp = document.getElementById('imp-temp').value;
+  const now = Date.now();
+  const add = importRows.filter(r => !r.dup).map((r, i) => newRecruit({
+    name: r.name, phone: r.phone, email: r.email, city: r.city, instagram: r.instagram, notes: r.notes,
+    source, temp, createdAt: now + i, updatedAt: now,
+  }));
+  state.recruits.push(...add);
+  save(); importRows = [];
+  toast(`Added ${add.length} recruit${add.length === 1 ? '' : 's'}`);
+  setView('today');
+}
+
+/* ============ Sheets ============ */
+function openSheet(html) { document.getElementById('sheet').innerHTML = html; document.getElementById('overlay').classList.add('open'); }
+function closeSheet() { document.getElementById('overlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+function segHtml(name, options, value) {
+  return `<div class="seg" data-name="${name}">${options.map(([v, label, icon, cls]) =>
+    `<button type="button" class="${value === v ? 'active' : ''} ${cls || ''}" data-v="${v}" onclick="segPick(this)">${icon ? `<i class="ti ${icon}"></i>` : ''}${label}</button>`).join('')}</div>`;
+}
+function segPick(btn) { btn.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn)); }
+function segVal(name) { const b = document.querySelector(`.seg[data-name="${name}"] button.active`); return b ? b.dataset.v : null; }
+
+/* ---- Add ---- */
+function openAdd() {
+  openSheet(`<div class="sheet-head"><div class="sheet-title">Add recruit</div><button class="icon-btn" onclick="closeSheet()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="form-label">Name *</label><input class="input" id="f-name" autocomplete="off"></div>
+    <div class="form-group"><label class="form-label">Phone</label><input class="input" id="f-phone" type="tel" autocomplete="off"></div>
+    <div class="form-group"><label class="form-label">Warm or cold</label>${segHtml('temp', [['warm', 'Warm', 'ti-flame', 'warm'], ['cold', 'Cold', 'ti-snowflake', 'cold']], 'warm')}</div>
+    <div class="form-group"><label class="form-label">Source</label><select class="select" id="f-source">${SOURCES.map(s => `<option value="${s.id}" ${s.id === 'referral' ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+    <details class="more"><summary><i class="ti ti-chevron-down"></i> More details</summary>
+      <div class="form-row" style="margin-top:8px">
+        <div class="form-group"><label class="form-label">Email</label><input class="input" id="f-email" type="email"></div>
+        <div class="form-group"><label class="form-label">Instagram</label><input class="input" id="f-ig" placeholder="@handle"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">City / state</label><input class="input" id="f-city"></div>
+        <div class="form-group"><label class="form-label">Referred by</label><input class="input" id="f-ref"></div>
+      </div>
+      <div class="form-group"><label class="form-label">How you know them</label><input class="input" id="f-how" placeholder="Solar team in Cedar Rapids, church, IG follower…"></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea class="textarea" id="f-notes"></textarea></div>
+    </details>
+    <div class="sheet-actions"><button class="btn" onclick="submitAdd(true)">Save &amp; add another</button><button class="btn btn-primary" onclick="submitAdd(false)">Save</button></div>`);
+  setTimeout(() => document.getElementById('f-name').focus(), 50);
+}
+function submitAdd(another) {
+  const v = id => (document.getElementById(id) || {}).value?.trim() || '';
+  const name = v('f-name');
+  if (!name) { toast('Name is required'); return document.getElementById('f-name').focus(); }
+  const r = newRecruit({ name, phone: v('f-phone'), temp: segVal('temp') || 'warm', source: v('f-source'),
+    email: v('f-email'), instagram: v('f-ig'), city: v('f-city'), referredBy: v('f-ref'), howKnow: v('f-how'), notes: v('f-notes') });
+  const dup = isDuplicate(r);
+  if (dup && !confirm('Someone with this name or phone is already in your list. Add anyway?')) return;
+  state.recruits.push(r);
+  save(); render();
+  toast(name + ' added');
+  if (another) openAdd(); else closeSheet();
+}
+
+/* ---- Detail ---- */
+function openDetail(id) {
+  const r = getR(id); if (!r) return;
+  const ig = igHandle(r.instagram);
+  const nextLabel = isActive(r) ? (isDue(r) ? '<span style="color:var(--amber)">Due now</span>' : 'Next touch ' + fmtRel(dueAt(r))) : '';
+  openSheet(`<div class="sheet-head">
+      <div><div class="sheet-title">${esc(r.name)}</div>
+      <div class="sheet-sub">${esc(sourceLabel(r.source))} · added ${fmtDate(r.createdAt)}${r.lastTouchAt ? ' · last contact ' + fmtAgo(r.lastTouchAt) : ' · never contacted'}${nextLabel ? ' · ' + nextLabel : ''}</div></div>
+      <button class="icon-btn" onclick="closeSheet()"><i class="ti ti-x"></i></button></div>
+    <div class="contact-bar">
+      <a class="btn ${r.phone ? '' : 'muted'}" href="tel:${esc(cleanPhone(r.phone))}" onclick="afterCall('${r.id}')" ${r.phone ? '' : 'style="opacity:.35;pointer-events:none"'}><i class="ti ti-phone"></i>Call</a>
+      <button class="btn" onclick="openText('${r.id}')" ${r.phone ? '' : 'style="opacity:.35;pointer-events:none"'}><i class="ti ti-message"></i>Text</button>
+      <button class="btn" onclick="openText('${r.id}',null,'dm')" ${ig ? '' : 'style="opacity:.35;pointer-events:none"'}><i class="ti ti-brand-instagram"></i>DM</button>
+      <button class="btn" onclick="openLog('${r.id}')"><i class="ti ti-check"></i>Log</button>
+    </div>
+    <div class="form-group"><label class="form-label">Stage</label><div class="stage-pick">${STAGES.map(s =>
+      `<button class="s-${s.id} ${r.stage === s.id ? 'active' : ''}" style="${r.stage === s.id ? '' : 'background:none;color:var(--text2)'}" onclick="closeSheet();moveStage('${r.id}','${s.id}')">${s.label}</button>`).join('')}</div></div>
+    ${r.stage === 'interview_set' ? `<div class="banner"><i class="ti ti-calendar-event lead" style="color:var(--purple)"></i><div class="grow"><div class="banner-title">${r.interviewAt ? esc(fmtDateTime(r.interviewAt)) : 'No time set'}</div></div><button class="btn btn-sm" onclick="openInterview('${r.id}')">Change</button></div>` : ''}
+    ${r.stage === 'dead' ? `<div class="banner"><i class="ti ti-skull lead" style="color:var(--red)"></i><div class="grow"><div class="banner-title">${r.reviveAt ? 'Revisit ' + fmtDate(r.reviveAt) : 'Not revisiting'}</div>${r.deadReason ? `<div class="banner-sub">${esc(r.deadReason)}</div>` : ''}</div><button class="btn btn-sm" onclick="openDead('${r.id}')">Change</button></div>` : ''}
+    ${isActive(r) ? `<div class="form-group" style="margin-top:12px"><label class="form-label">Snooze: next touch on</label>
+      <div style="display:flex;gap:8px"><input class="input" type="date" id="d-next" value="${toDateInput(r.nextAt)}" onchange="setNext('${r.id}',this.value)">
+      ${r.nextAt ? `<button class="btn" onclick="setNext('${r.id}','')">Clear</button>` : ''}</div>
+      <div class="hint">Leave blank to follow the ${r.temp} cadence (every ${intervalDays(r)} day${intervalDays(r) > 1 ? 's' : ''}).</div></div>` : ''}
+
+    <div class="section-title" style="margin-top:18px"><i class="ti ti-id"></i> Details</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Name</label><input class="input" id="d-name" value="${esc(r.name)}"></div>
+      <div class="form-group"><label class="form-label">Phone</label><input class="input" id="d-phone" type="tel" value="${esc(r.phone)}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Email</label><input class="input" id="d-email" type="email" value="${esc(r.email)}"></div>
+      <div class="form-group"><label class="form-label">Instagram</label><input class="input" id="d-ig" value="${esc(r.instagram)}" placeholder="@handle"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">City / state</label><input class="input" id="d-city" value="${esc(r.city)}"></div>
+      <div class="form-group"><label class="form-label">Referred by</label><input class="input" id="d-ref" value="${esc(r.referredBy)}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Source</label><select class="select" id="d-source">${SOURCES.map(s => `<option value="${s.id}" ${r.source === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Warm or cold</label>${segHtml('dtemp', [['warm', 'Warm', 'ti-flame', 'warm'], ['cold', 'Cold', 'ti-snowflake', 'cold']], r.temp)}</div>
+    </div>
+    <div class="form-group"><label class="form-label">How you know them</label><input class="input" id="d-how" value="${esc(r.howKnow)}"></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="textarea" id="d-notes">${esc(r.notes)}</textarea></div>
+    <button class="btn btn-primary btn-block" onclick="saveDetail('${r.id}')"><i class="ti ti-device-floppy"></i> Save details</button>
+
+    <div class="section-title" style="margin-top:22px"><i class="ti ti-history"></i> History</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input class="input" id="d-quicknote" placeholder="Add a note…" onkeydown="if(event.key==='Enter')addNote('${r.id}')"><button class="btn" onclick="addNote('${r.id}')">Add</button></div>
+    <div class="timeline">${r.touches.length ? r.touches.map(t => `<div class="tl-item"><div class="tl-icon"><i class="ti ${(TOUCHES[t.type] || TOUCHES.note).icon}"></i></div>
+      <div class="tl-body"><div class="tl-head"><span>${esc((TOUCHES[t.type] || TOUCHES.note).label)}${t.replied ? ' · <span style="color:var(--green)">responded</span>' : ''}</span><span class="tl-date">${esc(fmtDateTime(t.at))}</span></div>
+      ${t.note ? `<div class="tl-note">${esc(t.note)}</div>` : ''}</div></div>`).join('') : '<div class="hint">No history yet.</div>'}</div>
+    <button class="btn btn-danger btn-block" style="margin-top:20px" onclick="deleteRecruit('${r.id}')"><i class="ti ti-trash"></i> Delete recruit</button>`);
+}
+function saveDetail(id) {
+  const r = getR(id); if (!r) return;
+  const v = k => document.getElementById(k).value.trim();
+  if (!v('d-name')) return toast('Name is required');
+  Object.assign(r, { name: v('d-name'), phone: v('d-phone'), email: v('d-email'), instagram: v('d-ig'), city: v('d-city'),
+    referredBy: v('d-ref'), source: v('d-source'), temp: segVal('dtemp') || r.temp, howKnow: v('d-how'), notes: document.getElementById('d-notes').value });
+  touchR(r); save(); render(); closeSheet(); toast('Saved');
+}
+function setNext(id, val) {
+  const r = getR(id); if (!r) return;
+  r.nextAt = fromDateInput(val); touchR(r); save(); render(); openDetail(id);
+}
+function addNote(id) {
+  const r = getR(id); const el = document.getElementById('d-quicknote');
+  if (!r || !el.value.trim()) return;
+  logTouch(r, 'note', el.value.trim(), false);
+  save(); render(); openDetail(id);
+}
+function deleteRecruit(id) {
+  const r = getR(id); if (!r) return;
+  if (!confirm(`Delete ${r.name}? This can't be undone.`)) return;
+  state.recruits = state.recruits.filter(x => x.id !== id);
+  state.deleted.push(id);
+  save(); closeSheet(); render(); toast('Deleted');
+}
+
+/* ---- Log touch ---- */
+function openLog(id, type) {
+  const r = getR(id); if (!r) return;
+  openSheet(`<div class="sheet-head"><div><div class="sheet-title">Log a touch</div><div class="sheet-sub">${esc(r.name)}</div></div><button class="icon-btn" onclick="closeSheet()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group">${segHtml('ttype', [['text', 'Text', 'ti-message'], ['call', 'Call', 'ti-phone'], ['dm', 'DM', 'ti-brand-instagram'], ['inperson', 'In person', 'ti-user-check']], type || 'text')}</div>
+    <label class="check"><input type="checkbox" id="l-replied"> They responded</label>
+    <div class="form-group" style="margin-top:8px"><label class="form-label">Note (optional)</label><textarea class="textarea" id="l-note" style="min-height:70px" placeholder="What did they say?"></textarea></div>
+    <div class="form-group"><label class="form-label">Next touch</label><input class="input" type="date" id="l-next">
+      <div class="hint">Leave blank to follow the ${r.temp} cadence: ${fmtRel(addDays(Date.now(), intervalDays(r)))}.</div></div>
+    <div class="sheet-actions"><button class="btn btn-primary" onclick="submitLog('${id}')"><i class="ti ti-check"></i> Save</button></div>`);
+}
+function submitLog(id) {
+  const r = getR(id); if (!r) return;
+  logTouch(r, segVal('ttype') || 'text', document.getElementById('l-note').value.trim(), document.getElementById('l-replied').checked);
+  const next = fromDateInput(document.getElementById('l-next').value);
+  if (next) r.nextAt = next;
+  save(); closeSheet(); render(); toast('Logged · ' + r.name);
+}
+function afterCall(id) {
+  // Let the dialer open first, then ask how it went.
+  setTimeout(() => openLog(id, 'call'), 600);
+}
+
+/* ---- Text / DM with templates ---- */
+function openText(id, preferName, mode) {
+  const r = getR(id); if (!r) return;
+  const dm = mode === 'dm';
+  const tpls = state.templates.slice();
+  if (preferName) tpls.sort((a, b) => (b.name === preferName) - (a.name === preferName));
+  openSheet(`<div class="sheet-head"><div><div class="sheet-title">${dm ? 'Instagram DM' : 'Text'} ${esc(firstName(r))}</div>
+      <div class="sheet-sub">${dm ? 'Copies the message and opens their profile' : 'Opens your messages app with this filled in'} · logs the touch</div></div>
+      <button class="icon-btn" onclick="closeSheet()"><i class="ti ti-x"></i></button></div>
+    ${tpls.map(t => `<button class="tpl-opt" onclick="sendTemplate('${id}','${t.id}','${dm ? 'dm' : 'text'}')"><div class="tpl-opt-name">${esc(t.name)}</div><div class="tpl-opt-body">${esc(fillTemplate(t.body, r))}</div></button>`).join('')}
+    <button class="tpl-opt" onclick="sendTemplate('${id}','','${dm ? 'dm' : 'text'}')"><div class="tpl-opt-name">Blank message</div><div class="tpl-opt-body">Write your own</div></button>`);
+}
+function sendTemplate(id, tplId, mode) {
+  const r = getR(id); if (!r) return;
+  const t = state.templates.find(x => x.id === tplId);
+  const body = t ? fillTemplate(t.body, r) : '';
+  const snapshot = JSON.stringify(r);
+  if (mode === 'dm') {
+    if (body && navigator.clipboard) navigator.clipboard.writeText(body).catch(() => {});
+    window.open('https://instagram.com/' + encodeURIComponent(igHandle(r.instagram)), '_blank');
+  } else {
+    window.location.href = smsHref(r.phone, body);
+  }
+  logTouch(r, mode === 'dm' ? 'dm' : 'text', t ? t.name : '', false);
+  save(); closeSheet(); render();
+  toast((mode === 'dm' ? 'Copied · DM logged for ' : 'Text logged for ') + firstName(r), 'Undo', () => {
+    const i = state.recruits.findIndex(x => x.id === id);
+    if (i >= 0) { state.recruits[i] = JSON.parse(snapshot); save(); render(); }
+  });
+}
+
+/* ---- Interview ---- */
+function openInterview(id, isMove) {
+  const r = getR(id); if (!r) return;
+  const def = r.interviewAt || addDays(Date.now(), 1) + 18 * 3600000;
+  openSheet(`<div class="sheet-head"><div><div class="sheet-title">Interview for ${esc(firstName(r))}</div><div class="sheet-sub">It'll show on your Today page and in the confirm text.</div></div><button class="icon-btn" onclick="closeSheet()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="form-label">Date &amp; time</label><input class="input" type="datetime-local" id="iv-at" value="${toDTInput(def)}"></div>
+    <div class="sheet-actions">${isMove ? `<button class="btn" onclick="submitInterview('${id}',true)">Skip time</button>` : ''}<button class="btn btn-primary" onclick="submitInterview('${id}')">Save</button></div>`);
+}
+function submitInterview(id, skip) {
+  const r = getR(id); if (!r) return;
+  if (!skip) r.interviewAt = fromDTInput(document.getElementById('iv-at').value);
+  applyStage(r, 'interview_set');
+  touchR(r); save(); closeSheet(); render();
+  toast(r.name + ' → Interview Set');
+}
+
+/* ---- Dead / revive ---- */
+function openDead(id) {
+  const r = getR(id); if (!r) return;
+  openSheet(`<div class="sheet-head"><div><div class="sheet-title">Move ${esc(firstName(r))} to Dead</div><div class="sheet-sub">Pick when they should come back to your Today page.</div></div><button class="icon-btn" onclick="closeSheet()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="form-label">Revisit in</label>${segHtml('revive', [['30', '30 days'], ['60', '60 days'], ['90', '90 days'], ['0', 'Never']], '60')}</div>
+    <div class="form-group"><label class="form-label">Why? (optional)</label><input class="input" id="dead-reason" placeholder="Ghosted, not the right time, happy at job…" value="${esc(r.deadReason)}"></div>
+    <div class="sheet-actions"><button class="btn btn-danger" onclick="submitDead('${id}')"><i class="ti ti-skull"></i> Move to Dead</button></div>`);
+}
+function submitDead(id) {
+  const r = getR(id); if (!r) return;
+  const days = +(segVal('revive') || 0);
+  r.deadReason = document.getElementById('dead-reason').value.trim();
+  applyStage(r, 'dead');
+  r.deadAt = Date.now();
+  r.reviveAt = days ? addDays(Date.now(), days) : null;
+  r.nextAt = null;
+  save(); closeSheet(); render();
+  toast(r.name + ' → Dead' + (days ? ' · back in ' + days + ' days' : ''));
+}
+function revive(id) {
+  const r = getR(id); if (!r) return;
+  applyStage(r, 'prospect');
+  r.nextAt = null;
+  save(); render();
+  openText(id, 'Checking back in');
+}
+function snoozeRevive(id) {
+  const r = getR(id); if (!r) return;
+  r.reviveAt = addDays(Date.now(), 30); touchR(r);
+  save(); render(); toast('Revisit ' + firstName(r) + ' in 30 days');
+}
+
+/* ---- Backup / export ---- */
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function exportBackup() { download('recruit-crm-backup-' + toDateInput(Date.now()) + '.json', JSON.stringify(state, null, 2), 'application/json'); }
+function exportCSV() {
+  const cols = ['name', 'phone', 'email', 'city', 'instagram', 'source', 'temp', 'stage', 'referredBy', 'howKnow', 'lastTouchAt', 'interviewAt', 'notes'];
+  const cell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = state.recruits.map(r => cols.map(c => {
+    if (c === 'stage') return cell(stageLabel(r.stage));
+    if (c === 'source') return cell(sourceLabel(r.source));
+    if ((c === 'lastTouchAt' || c === 'interviewAt') && r[c]) return cell(new Date(r[c]).toLocaleString());
+    return cell(r[c]);
+  }).join(','));
+  download('recruits-' + toDateInput(Date.now()) + '.csv', [cols.join(','), ...rows].join('\n'), 'text/csv');
+}
+function restoreBackup(input) {
+  const f = input.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = normalize(JSON.parse(reader.result));
+      if (!confirm(`Replace your current data with this backup (${data.recruits.length} recruits)?`)) return;
+      state = data; save(); render(); toast('Backup restored');
+    } catch (e) { toast('That file is not a valid backup'); }
+  };
+  reader.readAsText(f);
+}
+
+/* ============ Toast ============ */
+let toastTimer = null;
+function toast(msg, actionLabel, action) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  const btn = document.getElementById('toast-action');
+  if (actionLabel) { btn.textContent = actionLabel; btn.style.display = ''; btn.onclick = () => { el.classList.remove('show'); action(); }; }
+  else btn.style.display = 'none';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), actionLabel ? 5000 : 2200);
+}
+
+/* ============ Firebase sync ============ */
+// Shares the Firebase project and login saved by the D2D Tracker on this same site.
+let syncDb = null, syncUser = null, syncUnsub = null, syncPushTimer = null;
+function getSyncConfig() { try { return JSON.parse(localGet('sync_firebase_config') || 'null'); } catch (e) { return null; } }
+
+function initSync() {
+  const config = getSyncConfig();
+  if (!config || !window.firebase) return;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    syncDb = firebase.firestore();
+    firebase.auth().onAuthStateChanged(user => {
+      syncUser = user;
+      updateSyncUI();
+      if (user) startSync();
+      else if (syncUnsub) { syncUnsub(); syncUnsub = null; }
+    });
+  } catch (e) { console.error('Firebase init error', e); }
+}
+
+function mergeStates(local, remote) {
+  const deleted = new Set([...local.deleted, ...remote.deleted]);
+  const byId = new Map();
+  [...remote.recruits, ...local.recruits].forEach(r => {
+    if (deleted.has(r.id)) return;
+    const cur = byId.get(r.id);
+    if (!cur || (r.updatedAt || 0) > (cur.updatedAt || 0)) byId.set(r.id, r);
+  });
+  return normalize({ v: 1, recruits: [...byId.values()], templates: remote.templates.length ? remote.templates : local.templates,
+    settings: Object.assign({}, local.settings, remote.settings), deleted: [...deleted] });
+}
+
+function startSync() {
+  if (!syncDb || !syncUser) return;
+  if (syncUnsub) syncUnsub();
+  const ref = syncDb.collection(CLOUD_COLLECTION).doc(syncUser.uid);
+  ref.get().then(doc => {
+    if (doc.exists && doc.data().state) {
+      const remote = normalize(JSON.parse(doc.data().state));
+      const merged = mergeStates(state, remote);
+      const changed = JSON.stringify(merged) !== doc.data().state;
+      state = merged;
+      localSet(STORE_KEY, JSON.stringify(state));
+      render();
+      if (changed) pushToCloud();
+      toast('Synced from cloud');
+    } else pushToCloud();
+  }).catch(e => { console.error('Sync fetch error', e); toast('Cloud sync failed: ' + e.message); });
+
+  syncUnsub = ref.onSnapshot(doc => {
+    if (!doc.exists || !doc.data().state) return;
+    const remoteStr = doc.data().state;
+    if (remoteStr === JSON.stringify(state)) return;
+    try {
+      state = normalize(JSON.parse(remoteStr));
+      localSet(STORE_KEY, JSON.stringify(state));
+      if (!document.getElementById('overlay').classList.contains('open')) render();
+    } catch (e) { console.error('Sync snapshot error', e); }
+  }, e => console.error('Sync listener error', e));
+}
+
+function pushToCloud() {
+  if (!syncDb || !syncUser) return;
+  clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(() => {
+    syncDb.collection(CLOUD_COLLECTION).doc(syncUser.uid).set({
+      state: JSON.stringify(state),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(e => { console.error('Sync push error', e); toast('Cloud save failed: ' + e.message); });
+  }, 800);
+}
+
+function updateSyncUI() {
+  const on = !!syncUser;
+  const cls = 'ti ' + (on ? 'ti-cloud-check' : 'ti-cloud-off');
+  const icon = document.getElementById('sync-icon'), iconM = document.getElementById('sync-icon-m');
+  if (icon) icon.className = cls;
+  if (iconM) iconM.className = cls;
+  const label = document.getElementById('sync-label');
+  if (label) label.textContent = on ? 'Synced' : (getSyncConfig() ? 'Sign in to sync' : 'Sync off');
+  document.getElementById('sync-btn').classList.toggle('synced', on);
+  const m = document.getElementById('sync-btn-m');
+  if (m) { m.style.display = window.innerWidth <= 768 ? '' : 'none'; m.style.color = on ? 'var(--green)' : ''; }
+}
+
+function openSync() {
+  const config = getSyncConfig();
+  let body;
+  if (syncUser) {
+    body = `<div class="banner"><i class="ti ti-cloud-check lead" style="color:var(--green)"></i><div class="grow"><div class="banner-title">Syncing</div><div class="banner-sub">${esc(syncUser.email || '')}</div></div></div>
+      <div class="hint">Changes save to the cloud automatically and show up on your other devices.</div>
+      <div class="sheet-actions"><button class="btn" onclick="syncSignOut()"><i class="ti ti-logout"></i> Sign out</button></div>`;
+  } else if (config) {
+    body = `<div class="hint" style="margin-bottom:12px">Use the same email and password as your D2D Tracker.</div>
+      <div class="form-group"><label class="form-label">Email</label><input class="input" id="s-email" type="email" autocomplete="email"></div>
+      <div class="form-group"><label class="form-label">Password</label><input class="input" id="s-pass" type="password" autocomplete="current-password"></div>
+      <div id="s-err" class="hint" style="color:var(--red);display:none"></div>
+      <div class="sheet-actions"><button class="btn" onclick="syncAuth(true)">Create account</button><button class="btn btn-primary" onclick="syncAuth(false)">Sign in</button></div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="clearSyncConfig()">Use a different Firebase project</button>`;
+  } else {
+    body = `<div class="hint" style="margin-bottom:12px">If your D2D Tracker is already set up on this site, open it once and this will connect automatically. Otherwise, paste the <code>firebaseConfig</code> from your Firebase project (Project settings → Your apps → Web).</div>
+      <div class="form-group"><textarea class="textarea" id="s-config" style="font-family:monospace;font-size:12px;min-height:140px" placeholder='const firebaseConfig = {&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  ...&#10;};'></textarea></div>
+      <div id="s-err" class="hint" style="color:var(--red);display:none"></div>
+      <div class="sheet-actions"><button class="btn btn-primary" onclick="saveSyncConfig()">Continue</button></div>`;
+  }
+  openSheet(`<div class="sheet-head"><div class="sheet-title">Cloud sync</div><button class="icon-btn" onclick="closeSheet()"><i class="ti ti-x"></i></button></div>${body}`);
+}
+function syncErr(msg) { const e = document.getElementById('s-err'); if (e) { e.style.display = 'block'; e.textContent = msg; } }
+function parseConfig(raw) {
+  // Accept a pasted JS snippet: pull out the object and quote its keys so it parses as JSON.
+  const m = raw.match(/\{[\s\S]*\}/); if (!m) return null;
+  const json = m[0].replace(/\/\/.*$/gm, '').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}');
+  try { return JSON.parse(json); } catch (e) { return null; }
+}
+function saveSyncConfig() {
+  const config = parseConfig(document.getElementById('s-config').value);
+  if (!config || !config.apiKey || !config.projectId) return syncErr('Could not read that config. Paste the full firebaseConfig block.');
+  localSet('sync_firebase_config', JSON.stringify(config));
+  initSync(); openSync();
+}
+async function syncAuth(create) {
+  const email = document.getElementById('s-email').value.trim(), pass = document.getElementById('s-pass').value;
+  try {
+    if (!firebase.apps.length) initSync();
+    if (create) await firebase.auth().createUserWithEmailAndPassword(email, pass);
+    else await firebase.auth().signInWithEmailAndPassword(email, pass);
+    closeSheet(); toast('Signed in · syncing');
+  } catch (e) { syncErr(e.message); }
+}
+async function syncSignOut() {
+  await firebase.auth().signOut();
+  if (syncUnsub) { syncUnsub(); syncUnsub = null; }
+  syncUser = null; updateSyncUI(); closeSheet(); toast('Signed out');
+}
+function clearSyncConfig() {
+  if (!confirm('Disconnect this Firebase project? Your data stays on this device.')) return;
+  localStorage.removeItem('sync_firebase_config');
+  location.reload();
+}
+
+/* ============ Boot ============ */
+window.addEventListener('resize', updateSyncUI);
+// Refresh "due" status when the app comes back to the foreground on a new day.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !document.getElementById('overlay').classList.contains('open')) render(); });
+render();
+initSync();
+</script>
+</body>
+</html>
